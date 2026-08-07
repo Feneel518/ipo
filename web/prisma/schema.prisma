@@ -1,0 +1,76 @@
+// Prisma schema for the web app's read-only view of the worker-owned database.
+// The worker (../worker/) and its migrations (../database/migrations/) own
+// this schema. This file is a hand-maintained mirror of the tables the web
+// app is allowed to read (see database/migrations/0005_web_readonly_role.sql)
+// and must never be used to `prisma migrate` against the shared database.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Ipo {
+  id                   BigInt    @id @default(autoincrement())
+  name                 String
+  symbol               String
+  exchange             String
+  exchangeSecurityCode String?   @map("exchange_security_code")
+  board                String
+  priceBandLow         Decimal?  @map("price_band_low") @db.Decimal(12, 2)
+  priceBandHigh        Decimal?  @map("price_band_high") @db.Decimal(12, 2)
+  lotSize              Int?      @map("lot_size")
+  /// Total issue size in INR crore
+  issueSize            Decimal?  @map("issue_size") @db.Decimal(14, 2)
+  openDate             DateTime? @map("open_date") @db.Date
+  closeDate            DateTime? @map("close_date") @db.Date
+  allotmentDate        DateTime? @map("allotment_date") @db.Date
+  refundDate           DateTime? @map("refund_date") @db.Date
+  listingDate          DateTime? @map("listing_date") @db.Date
+  registrar            String?
+  status               String
+  drhpLink             String?   @map("drhp_link")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @default(now()) @map("updated_at")
+
+  subscriptionSnapshots SubscriptionSnapshot[]
+  listingPerformance    ListingPerformance?
+
+  @@unique([symbol, exchange])
+  @@index([status, openDate])
+  @@index([listingDate])
+  @@map("ipos")
+}
+
+/// Append-only time series of category-level IPO subscriptions.
+model SubscriptionSnapshot {
+  id                   BigInt   @id @default(autoincrement())
+  ipoId                BigInt   @map("ipo_id")
+  capturedAt           DateTime @map("captured_at")
+  category             String
+  subscriptionMultiple Decimal  @map("subscription_multiple") @db.Decimal(14, 4)
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  ipo Ipo @relation(fields: [ipoId], references: [id])
+
+  @@unique([ipoId, capturedAt, category])
+  @@index([ipoId, capturedAt(sort: Desc)])
+  @@map("subscription_snapshots")
+}
+
+model ListingPerformance {
+  ipoId              BigInt    @id @map("ipo_id")
+  listingOpenPrice   Decimal?  @map("listing_open_price") @db.Decimal(12, 2)
+  listingClosePrice  Decimal?  @map("listing_close_price") @db.Decimal(12, 2)
+  currentPrice       Decimal?  @map("current_price") @db.Decimal(12, 2)
+  listingPriceDate   DateTime? @map("listing_price_date") @db.Date
+  currentPriceDate   DateTime? @map("current_price_date") @db.Date
+  updatedAt          DateTime  @default(now()) @map("updated_at")
+
+  ipo Ipo @relation(fields: [ipoId], references: [id])
+
+  @@map("listing_performance")
+}

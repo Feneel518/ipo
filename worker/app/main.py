@@ -6,6 +6,7 @@ from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 
 from app.config import Settings, get_settings
+from app.scheduler import create_worker_scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +20,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     @asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("worker starting", extra={"environment": settings.app_env})
-        yield
-        logger.info("worker stopping")
+        worker_scheduler = create_worker_scheduler(settings)
+        app.state.worker_scheduler = worker_scheduler
+        if worker_scheduler is None:
+            logger.warning("scheduler disabled or DATABASE_URL is not configured")
+        else:
+            worker_scheduler.start()
+            logger.info("scheduler started timezone=Asia/Kolkata")
+        try:
+            yield
+        finally:
+            if worker_scheduler is not None:
+                worker_scheduler.shutdown()
+            logger.info("worker stopping")
 
     app = FastAPI(
         title=settings.app_name,

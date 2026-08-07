@@ -8,14 +8,21 @@ version = "0.1.0"
 description = "Background worker and administrative HTTP surface for IPO Dekho"
 requires-python = ">=3.11"
 dependencies = [
+    "apscheduler>=3.11,<4",
     "fastapi>=0.116,<1",
+    "httpx>=0.28,<1",
+    "psycopg[binary]>=3.2,<4",
     "pydantic-settings>=2.10,<3",
+    "tenacity>=9.1,<10",
     "uvicorn[standard]>=0.35,<1",
 ]
 
+[project.scripts]
+ipo-prices = "app.prices.cli:main"
+ipo-verify = "app.verification.cli:main"
+
 [project.optional-dependencies]
 dev = [
-    "httpx>=0.28,<1",
     "pytest>=8.4,<9",
     "ruff>=0.12,<1",
 ]
