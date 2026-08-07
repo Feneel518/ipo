@@ -1,0 +1,22 @@
+.env
+.env.*
+!.env.example
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.git.accidental.bak/
+
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Legacy source drops kept locally until they are deliberately migrated.
+/ipo_milega_scrapper-main/
+/notebookAlternative-model2.0/
