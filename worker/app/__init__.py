@@ -1,1 +1,0 @@
-"""IPO Dekho worker service."""

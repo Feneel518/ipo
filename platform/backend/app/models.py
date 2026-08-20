@@ -1,0 +1,213 @@
+from datetime import date, datetime
+from decimal import Decimal
+from enum import StrEnum
+from typing import Any
+
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db import Base
+
+
+class Lifecycle(StrEnum):
+    UPCOMING = "UPCOMING"
+    OPEN = "OPEN"
+    CLOSED = "CLOSED"
+    LISTED = "LISTED"
+    WITHDRAWN = "WITHDRAWN"
+    CANCELLED = "CANCELLED"
+
+
+class Exchange(StrEnum):
+    NSE = "NSE"
+    BSE = "BSE"
+
+
+class Segment(StrEnum):
+    MAINBOARD = "MAINBOARD"
+    SME = "SME"
+
+
+class MarketType(StrEnum):
+    BOOK_BUILT = "BOOK_BUILT"
+    FIXED_PRICE = "FIXED_PRICE"
+    UNKNOWN = "UNKNOWN"
+
+
+class Ipo(Base):
+    __tablename__ = "ipos"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    company_name: Mapped[str] = mapped_column(String(300), index=True)
+    normalized_name: Mapped[str] = mapped_column(String(300), index=True)
+    slug: Mapped[str] = mapped_column(String(340), unique=True, index=True)
+    isin: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
+    lifecycle: Mapped[Lifecycle] = mapped_column(Enum(Lifecycle, name="ipo_lifecycle"), index=True)
+    issue_type: Mapped[str] = mapped_column(String(40), default="IPO")
+    market_type: Mapped[MarketType] = mapped_column(
+        Enum(MarketType, name="ipo_market_type"), default=MarketType.UNKNOWN
+    )
+    open_date: Mapped[date | None] = mapped_column(Date, index=True)
+    close_date: Mapped[date | None] = mapped_column(Date, index=True)
+    listing_date: Mapped[date | None] = mapped_column(Date, index=True)
+    price_low: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    price_high: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    final_issue_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    face_value: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    tick_size: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    lot_size: Mapped[int | None] = mapped_column(BigInteger)
+    minimum_bid_quantity: Mapped[int | None] = mapped_column(BigInteger)
+    minimum_retail_investment: Mapped[Decimal | None] = mapped_column(Numeric(24, 4))
+    issue_size_shares: Mapped[Decimal | None] = mapped_column(Numeric(24, 4))
+    issue_size_crore: Mapped[Decimal | None] = mapped_column(Numeric(24, 4))
+    issue_size_crore_is_estimated: Mapped[bool] = mapped_column(Boolean, default=False)
+    registrar: Mapped[str | None] = mapped_column(String(300))
+    lead_managers: Mapped[list[str] | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), index=True
+    )
+    listings: Mapped[list["ExchangeListing"]] = relationship(back_populates="ipo")
+    documents: Mapped[list["IpoDocument"]] = relationship(back_populates="ipo")
+    subscriptions: Mapped[list["SubscriptionSnapshot"]] = relationship(back_populates="ipo")
+    bid_rules: Mapped[list["BidRule"]] = relationship(back_populates="ipo")
+
+
+class ExchangeListing(Base):
+    __tablename__ = "ipo_exchange_listings"
+    __table_args__ = (UniqueConstraint("exchange", "source_id"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ipo_id: Mapped[int] = mapped_column(ForeignKey("ipos.id", ondelete="RESTRICT"), index=True)
+    exchange: Mapped[Exchange] = mapped_column(Enum(Exchange, name="exchange_name"), index=True)
+    segment: Mapped[Segment] = mapped_column(Enum(Segment, name="market_segment"), index=True)
+    source_id: Mapped[str] = mapped_column(String(100))
+    symbol: Mapped[str | None] = mapped_column(String(80))
+    series: Mapped[str | None] = mapped_column(String(20))
+    scrip_code: Mapped[str | None] = mapped_column(String(20))
+    source_status: Mapped[str | None] = mapped_column(String(80))
+    source_url: Mapped[str] = mapped_column(Text)
+    issue_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    listing_price: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    listing_close: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    listing_gain_percent: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    missing_runs: Mapped[int] = mapped_column(default=0)
+    is_stale: Mapped[bool] = mapped_column(default=False)
+    master_data_last_fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    next_refresh_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    detail_failure_count: Mapped[int] = mapped_column(default=0)
+    detail_last_error: Mapped[str | None] = mapped_column(Text)
+    master_data_finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ipo: Mapped[Ipo] = relationship(back_populates="listings")
+
+
+class BidRule(Base):
+    __tablename__ = "ipo_bid_rules"
+    __table_args__ = (UniqueConstraint("ipo_id", "exchange", "category"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ipo_id: Mapped[int] = mapped_column(ForeignKey("ipos.id", ondelete="CASCADE"), index=True)
+    exchange: Mapped[Exchange] = mapped_column(Enum(Exchange, name="bid_rule_exchange"))
+    category: Mapped[str] = mapped_column(String(40))
+    minimum_bid_quantity: Mapped[int | None] = mapped_column(BigInteger)
+    maximum_bid_quantity: Mapped[int | None] = mapped_column(BigInteger)
+    maximum_subscription_amount: Mapped[Decimal | None] = mapped_column(Numeric(24, 4))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    ipo: Mapped[Ipo] = relationship(back_populates="bid_rules")
+
+
+class IpoDocument(Base):
+    __tablename__ = "ipo_documents"
+    __table_args__ = (UniqueConstraint("ipo_id", "document_type", "url"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ipo_id: Mapped[int] = mapped_column(ForeignKey("ipos.id", ondelete="RESTRICT"), index=True)
+    document_type: Mapped[str] = mapped_column(String(40))
+    title: Mapped[str] = mapped_column(String(250))
+    url: Mapped[str] = mapped_column(Text)
+    ipo: Mapped[Ipo] = relationship(back_populates="documents")
+
+
+class SubscriptionSnapshot(Base):
+    __tablename__ = "subscription_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "ipo_id",
+            "exchange",
+            "captured_at",
+            "category",
+            "bid_data_scope",
+            "content_hash",
+            name="uq_subscription_observation",
+        ),
+        Index("ix_subscription_ipo_time", "ipo_id", "captured_at"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ipo_id: Mapped[int] = mapped_column(ForeignKey("ipos.id", ondelete="RESTRICT"))
+    exchange: Mapped[Exchange] = mapped_column(Enum(Exchange, name="subscription_exchange"))
+    snapshot_date: Mapped[date] = mapped_column(Date)
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    category: Mapped[str] = mapped_column(String(80))
+    shares_reserved_for_category: Mapped[Decimal | None] = mapped_column(Numeric(24, 4))
+    raw_exchange_bid_quantity: Mapped[Decimal | None] = mapped_column(Numeric(24, 4))
+    applications: Mapped[Decimal | None] = mapped_column(Numeric(24, 4))
+    calculated_subscription: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+    source_reported_multiple: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+    source: Mapped[str] = mapped_column(Text)
+    bid_data_scope: Mapped[str] = mapped_column(String(30), default="ALL_EXCHANGES")
+    content_hash: Mapped[str] = mapped_column(String(64))
+    ipo: Mapped[Ipo] = relationship(back_populates="subscriptions")
+
+
+class SourceRecord(Base):
+    __tablename__ = "source_records"
+    __table_args__ = (UniqueConstraint("exchange", "source_id"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    exchange: Mapped[Exchange] = mapped_column(Enum(Exchange, name="source_exchange"))
+    source_id: Mapped[str] = mapped_column(String(100))
+    endpoint: Mapped[str] = mapped_column(Text)
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    raw_snapshot_uri: Mapped[str | None] = mapped_column(Text)
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class IngestionRun(Base):
+    __tablename__ = "ingestion_runs"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    exchange: Mapped[Exchange] = mapped_column(Enum(Exchange, name="run_exchange"), index=True)
+    status: Mapped[str] = mapped_column(String(30), index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    fetched_count: Mapped[int] = mapped_column(default=0)
+    inserted_count: Mapped[int] = mapped_column(default=0)
+    updated_count: Mapped[int] = mapped_column(default=0)
+    rejected_count: Mapped[int] = mapped_column(default=0)
+    warnings: Mapped[list[str] | None] = mapped_column(JSON)
+    error: Mapped[str | None] = mapped_column(Text)

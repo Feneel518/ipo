@@ -1,0 +1,10 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+preDeployCommand = ["python scripts/migrate.py"]
+startCommand = "ipo-ingest"
+cronSchedule = "*/5 * * * *"
+restartPolicyType = "NEVER"
+

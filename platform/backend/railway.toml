@@ -1,0 +1,10 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+preDeployCommand = ["python scripts/migrate.py"]
+healthcheckPath = "/health/ready"
+healthcheckTimeout = 300
+restartPolicyType = "ALWAYS"
+

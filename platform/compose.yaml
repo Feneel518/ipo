@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ipodekho
+      POSTGRES_USER: ipodekho
+      POSTGRES_PASSWORD: ipodekho
+    ports: ["5432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ipodekho -d ipodekho"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://ipodekho:ipodekho@postgres:5432/ipodekho
+    command: ["python", "scripts/migrate.py"]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://ipodekho:ipodekho@postgres:5432/ipodekho
+      CORS_ORIGINS: http://localhost:3000
+      INTERNAL_API_TOKEN: local-development-token
+      REVALIDATION_URL: http://web:3000/api/revalidate
+      REVALIDATION_SECRET: local-revalidation-secret
+    ports: ["8080:8080"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  web:
+    build: ./frontend
+    environment:
+      API_BASE_URL: http://api:8080
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      REVALIDATION_SECRET: local-revalidation-secret
+      PORT: 3000
+    ports: ["3000:3000"]
+    depends_on: [api]
+
+  ingest:
+    profiles: ["jobs"]
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://ipodekho:ipodekho@postgres:5432/ipodekho
+      REVALIDATION_URL: http://web:3000/api/revalidate
+      REVALIDATION_SECRET: local-revalidation-secret
+    command: ["ipo-ingest"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+volumes:
+  postgres_data:
