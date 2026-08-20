@@ -45,6 +45,7 @@ class IpoCard(BaseModel):
     refund_date_is_estimated: bool
     credit_date: date | None
     credit_date_is_estimated: bool
+    expected_listing_date: date | None
     listing_date: date | None
     price_low: Decimal | None
     price_high: Decimal | None

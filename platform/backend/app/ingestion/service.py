@@ -253,6 +253,7 @@ def _upsert_issue(
         "lifecycle": issue.lifecycle,
         "open_date": issue.open_date,
         "close_date": issue.close_date,
+        "expected_listing_date": issue.expected_listing_date,
         "listing_date": issue.listing_date,
         "price_low": issue.price_low,
         "price_high": issue.price_high,

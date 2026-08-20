@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { ListingBellIllustration } from "@/components/illustrations";
 import { IpoTimetable } from "@/components/ipo-timetable";
 import { StatusPill } from "@/components/status-pill";
 import { SubscriptionMomentum } from "@/components/subscription-momentum";
@@ -108,9 +109,12 @@ export default async function IpoPage({ params }: { params: Params }) {
       <nav className="breadcrumbs" aria-label="Breadcrumb"><Link href="/">Home</Link><span>/</span><Link href="/ipos">IPOs</Link><span>/</span><span aria-current="page">{companyName}</span></nav>
       <header className="detail-hero">
         <div><div className="card-kicker"><StatusPill status={ipo.lifecycle} /><span>{ipo.listings.map((item) => `${item.exchange} ${item.segment}`).join(" · ")}</span></div><h1>{companyName}</h1><p>{ipo.isin ? `ISIN ${ipo.isin}` : "ISIN pending"} · {humanizeLabel(ipo.issue_type)}</p></div>
-        <div className="price-block"><span>Price band</span><strong>{priceBand(ipo.price_low, ipo.price_high)}</strong><small>per equity share</small></div>
+        <div className="detail-hero-aside">
+          <ListingBellIllustration className="detail-hero-illustration" />
+          <div className="price-block"><span>Price band</span><strong>{priceBand(ipo.price_low, ipo.price_high)}</strong><small>per equity share</small></div>
+        </div>
       </header>
-      <IpoTimetable companyName={companyName} openDate={ipo.open_date} closeDate={ipo.close_date} allotmentDate={ipo.allotment_date} allotmentDateIsEstimated={ipo.allotment_date_is_estimated} refundDate={ipo.refund_date} refundDateIsEstimated={ipo.refund_date_is_estimated} creditDate={ipo.credit_date} creditDateIsEstimated={ipo.credit_date_is_estimated} listingDate={ipo.listing_date} />
+      <IpoTimetable companyName={companyName} openDate={ipo.open_date} closeDate={ipo.close_date} allotmentDate={ipo.allotment_date} allotmentDateIsEstimated={ipo.allotment_date_is_estimated} refundDate={ipo.refund_date} refundDateIsEstimated={ipo.refund_date_is_estimated} creditDate={ipo.credit_date} creditDateIsEstimated={ipo.credit_date_is_estimated} expectedListingDate={ipo.expected_listing_date} listingDate={ipo.listing_date} />
       <div className="detail-grid">
         <section className="issue-facts-panel"><div className="issue-facts-heading"><div><p className="overline">Issue facts</p><h2>Key IPO details</h2></div><span aria-hidden="true">08 / essentials</span></div><dl className="fact-table fact-table-complete" aria-label={`${companyName} key IPO details`}>
           {issueFacts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}

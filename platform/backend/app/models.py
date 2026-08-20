@@ -68,6 +68,7 @@ class Ipo(Base):
     refund_date_is_estimated: Mapped[bool] = mapped_column(Boolean, default=False)
     credit_date: Mapped[date | None] = mapped_column(Date, index=True)
     credit_date_is_estimated: Mapped[bool] = mapped_column(Boolean, default=False)
+    expected_listing_date: Mapped[date | None] = mapped_column(Date, index=True)
     listing_date: Mapped[date | None] = mapped_column(Date, index=True)
     price_low: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))
     price_high: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))

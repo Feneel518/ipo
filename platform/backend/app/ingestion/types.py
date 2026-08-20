@@ -48,6 +48,7 @@ class NormalizedIssue(BaseModel):
     refund_date_is_estimated: bool = False
     credit_date: date | None = None
     credit_date_is_estimated: bool = False
+    expected_listing_date: date | None = None
     listing_date: date | None = None
     price_low: Decimal | None = None
     price_high: Decimal | None = None
@@ -99,6 +100,8 @@ class NormalizedIssue(BaseModel):
             if self.credit_date is None:
                 updates["credit_date"] = next_business_day(self.close_date, 2)
                 updates["credit_date_is_estimated"] = True
+            if self.expected_listing_date is None:
+                updates["expected_listing_date"] = next_business_day(self.close_date, 3)
         applicable_price = self.final_issue_price or self.price_high
         if self.minimum_bid_quantity is not None and applicable_price is not None:
             updates["minimum_retail_investment"] = (

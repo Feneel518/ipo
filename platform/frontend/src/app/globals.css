@@ -143,35 +143,40 @@ input, select { width: 100%; min-height: 47px; border: 1px solid var(--rule); bo
 .detail-hero { display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: end; padding-bottom: 50px; }
 .detail-hero h1 { font-size: clamp(3.7rem, 7vw, 7.7rem); letter-spacing: -.06em; margin: 22px 0 18px; }
 .detail-hero > div > p { color: var(--muted); font: .72rem var(--mono); }
+.detail-hero-aside { align-self: stretch; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 22px; }
+.detail-hero-illustration { width: clamp(120px, 13vw, 190px); height: auto; flex-shrink: 0; }
 .price-block { border-left: 6px solid var(--orange); padding: 8px 0 8px 26px; display: flex; flex-direction: column; }
 .price-block span, .price-block small { color: var(--muted); font: .65rem var(--mono); }
 .price-block strong { font: 500 clamp(1.8rem, 3vw, 3.4rem) var(--display); white-space: nowrap; margin: 5px 0; }
-.ipo-timetable { padding: clamp(28px, 4vw, 48px) 0 22px; border-block: 1px solid var(--rule); }
+.ipo-timetable { min-width: 0; overflow: hidden; padding: clamp(28px, 4vw, 48px) 0 22px; border-block: 1px solid var(--rule); }
 .ipo-timetable-heading { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 38px; }
 .ipo-timetable-heading .overline { margin: 0 0 5px; color: var(--orange); }
 .ipo-timetable-heading h2 { font-size: clamp(2.1rem, 3.4vw, 3.7rem); letter-spacing: -.04em; }
 .ipo-timetable-heading > span { margin-bottom: 5px; color: var(--green); font: 700 .62rem var(--mono); letter-spacing: .04em; }
-.ipo-timeline-track { position: relative; }
-.ipo-timeline { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+.ipo-timeline-track { position: relative; min-width: 0; }
+.ipo-timeline { position: relative; width: 100%; min-width: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
 .ipo-timeline::before { content: ""; position: absolute; top: 15px; left: 8.33%; right: 8.33%; height: 1px; background: var(--rule); transform: scaleX(0); transform-origin: left; animation: timeline-draw .85s .12s var(--ease) forwards; }
-.ipo-timeline-progress { position: absolute; z-index: 1; top: 14px; left: 8.33%; right: 8.33%; height: 3px; background: var(--green); transform: scaleX(var(--timeline-progress)); transform-origin: left; animation: timeline-progress-in .9s .2s var(--ease) both; }
-.ipo-timeline-now { position: absolute; z-index: 3; top: -13px; left: var(--timeline-position); padding: 2px 6px; color: var(--white); background: var(--orange); font: 700 .5rem var(--mono); letter-spacing: .04em; transform: translateX(-50%); animation: timeline-today-in .35s .85s var(--ease) both; }
-.ipo-timeline-now::after { content: ""; position: absolute; left: 50%; bottom: -19px; width: 8px; height: 8px; border: 2px solid var(--paper); border-radius: 50%; background: var(--orange); transform: translateX(-50%); }
-.ipo-timeline-step { position: relative; min-width: 0; padding: 0 clamp(8px, 1.3vw, 20px); text-align: center; opacity: 0; transform: translateY(10px); animation: timeline-step-in .45s var(--ease) forwards; }
+.ipo-timeline-progress { position: absolute; z-index: 2; top: 14px; left: 8.33%; right: 8.33%; height: 3px; background: var(--green); transform: scaleX(var(--timeline-progress)); transform-origin: left; animation: timeline-progress-in .9s .2s var(--ease) both; }
+.ipo-timeline-now { position: absolute; z-index: 4; top: -19px; left: var(--timeline-position); padding: 3px 7px; color: var(--white); background: var(--orange); font: 700 .52rem var(--mono); letter-spacing: .04em; transform: translateX(-50%); animation: timeline-today-in .35s .85s var(--ease) both; }
+.ipo-timeline-now::after { content: ""; position: absolute; left: 50%; bottom: -9px; width: 1px; height: 9px; background: var(--orange); transform: translateX(-50%); }
+.ipo-timeline-step { position: relative; z-index: 3; min-width: 0; overflow: visible; padding: 0 clamp(5px, 1.1vw, 16px); text-align: center; opacity: 0; transform: translateY(10px); animation: timeline-step-in .45s var(--ease) forwards; }
 .ipo-timeline-step:nth-child(1) { animation-delay: .12s; }
 .ipo-timeline-step:nth-child(2) { animation-delay: .2s; }
 .ipo-timeline-step:nth-child(3) { animation-delay: .28s; }
 .ipo-timeline-step:nth-child(4) { animation-delay: .36s; }
 .ipo-timeline-step:nth-child(5) { animation-delay: .44s; }
 .ipo-timeline-step:nth-child(6) { animation-delay: .52s; }
-.ipo-timeline-marker { position: relative; z-index: 1; width: 30px; height: 30px; display: grid; place-items: center; margin: 0 auto 18px; border: 1px solid var(--rule); border-radius: 50%; color: var(--muted); background: var(--paper); font: 700 .53rem var(--mono); transition: transform .2s var(--ease), border-color .2s var(--ease); }
+.ipo-timeline-marker { position: relative; z-index: 3; width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; overflow: visible; margin: 0 auto 18px; border: 1px solid var(--rule); border-radius: 50%; color: var(--muted); background: var(--paper); font: 700 .53rem/1 var(--mono); white-space: nowrap; transition: border-color .2s var(--ease), box-shadow .2s var(--ease); }
 .ipo-timeline-step.is-complete .ipo-timeline-marker { color: var(--white); background: var(--green); border-color: var(--green); }
 .ipo-timeline-step.is-current .ipo-timeline-marker { color: var(--white); background: var(--orange); border-color: var(--orange); animation: timeline-pulse 2s ease-out infinite; }
-.ipo-timeline-step > div { display: flex; min-width: 0; flex-direction: column; }
-.ipo-timeline-step > div > span { color: var(--muted); font: 700 .57rem var(--mono); letter-spacing: .08em; text-transform: uppercase; }
-.ipo-timeline-step strong { margin: 7px 0 2px; color: var(--ink); font: 500 clamp(1.05rem, 1.45vw, 1.45rem)/1.15 var(--display); letter-spacing: -.02em; transition: color .2s var(--ease); }
-.ipo-timeline-step small { color: var(--muted); font: .58rem var(--mono); }
-.ipo-timeline-step:hover .ipo-timeline-marker { transform: translateY(-3px); border-color: var(--orange); }
+.ipo-timeline-step > div { width: 100%; min-width: 0; display: flex; align-items: center; flex-direction: column; overflow: hidden; }
+.ipo-timeline-step > div > span { max-width: 100%; color: #4f5954; font: 700 .6rem/1.25 var(--mono); letter-spacing: .065em; text-transform: uppercase; overflow-wrap: anywhere; }
+.ipo-timeline-step strong { max-width: 100%; margin: 8px 0 4px; color: var(--ink); font: 500 clamp(1.2rem, 1.65vw, 1.6rem)/1.1 var(--display); letter-spacing: -.02em; white-space: nowrap; transition: color .2s var(--ease); }
+.ipo-timeline-step small { max-width: 100%; color: #59645e; font: .59rem/1.5 var(--mono); overflow-wrap: anywhere; }
+.ipo-timeline-step small em { display: inline-block; margin-left: 5px; padding: 1px 4px; color: #76501d; background: #efe2c9; font: 700 .48rem/1.4 var(--mono); font-style: normal; letter-spacing: .03em; text-transform: uppercase; }
+.ipo-timeline-step.is-complete > div > span { color: var(--green); }
+.ipo-timeline-step.is-current > div > span { color: var(--orange); }
+.ipo-timeline-step:hover .ipo-timeline-marker { border-color: var(--orange); }
 .ipo-timetable-note { margin: 32px 0 0; color: var(--muted); font-size: .66rem; text-align: center; }
 @keyframes timeline-draw { to { transform: scaleX(1); } }
 @keyframes timeline-progress-in { from { transform: scaleX(0); } to { transform: scaleX(var(--timeline-progress)); } }
@@ -355,6 +360,10 @@ td:last-child strong { color: var(--green); font: 700 1rem var(--mono); }
 .site-footer .disclaimer { grid-column: 1/-1; border-top: 1px solid var(--rule); padding-top: 25px; font: .65rem var(--mono); }
 
 @media (max-width: 1100px) {
+  .ipo-timeline-step { padding-inline: 4px; }
+  .ipo-timeline-step strong { font-size: 1.25rem; }
+  .ipo-timeline-step > div > span { font-size: .56rem; }
+  .ipo-timeline-step small { font-size: .55rem; }
   .subscription-board { grid-template-columns: 1fr; }
   .subscription-total { min-height: 500px; }
   .subscription-method { grid-template-columns: 140px 1fr; }
@@ -408,10 +417,10 @@ td:last-child strong { color: var(--green); font: 700 1rem var(--mono); }
   .ipo-timeline-progress { top: 15px; bottom: auto; left: 14px; right: auto; width: 3px; height: calc(var(--timeline-position-mobile) - 15px); transform: none; animation-name: timeline-progress-in-vertical; }
   .ipo-timeline-now { top: var(--timeline-position-mobile); left: -31px; transform: translateY(-50%); }
   .ipo-timeline-now { animation-name: timeline-today-in-mobile; }
-  .ipo-timeline-now::after { left: auto; right: -21px; bottom: 50%; transform: translateY(50%); }
+  .ipo-timeline-now::after { left: auto; right: -10px; bottom: 50%; width: 10px; height: 1px; transform: translateY(50%); }
   .ipo-timeline-step { display: grid; grid-template-columns: 46px 1fr; height: 78px; padding: 0; text-align: left; }
   .ipo-timeline-marker { margin: 0; }
-  .ipo-timeline-step > div { align-self: start; padding: 1px 0 18px 4px; }
+  .ipo-timeline-step > div { align-self: start; align-items: flex-start; padding: 1px 0 18px 4px; }
   .ipo-timeline-step strong { font-size: 1.3rem; }
   .ipo-timetable-note { margin-top: 15px; padding-left: 46px; text-align: left; }
   @keyframes timeline-draw-vertical { to { transform: scaleY(1); } }
@@ -468,6 +477,8 @@ td:last-child strong { color: var(--green); font: 700 1rem var(--mono); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+  .ipo-timeline-step { opacity: 1; transform: none; }
+  .ipo-timeline::before { transform: none; }
 }
 
 .dark {

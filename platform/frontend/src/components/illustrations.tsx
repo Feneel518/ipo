@@ -121,3 +121,35 @@ export function NotFoundIllustration({ className }: { className?: string }) {
     </svg>
   );
 }
+
+export function ListingBellIllustration({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 280 260" className={className} role="img" aria-hidden="true">
+      <circle cx="140" cy="115" r="95" fill="var(--green-light)" opacity="0.5" />
+      <line x1="25" y1="215" x2="255" y2="215" stroke="var(--ink)" strokeWidth="1.5" opacity="0.35" />
+
+      <rect x="40" y="175" width="26" height="40" fill="var(--white)" stroke="var(--ink)" strokeWidth="2.5" />
+      <rect x="74" y="145" width="26" height="70" fill="var(--orange-light)" stroke="var(--ink)" strokeWidth="2.5" />
+      <rect x="108" y="100" width="26" height="115" fill="var(--orange)" stroke="var(--ink)" strokeWidth="2.5" />
+
+      <path d="M53 172 L87 138 L121 96 L150 62" stroke="var(--ink)" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M136 70 L150 62 L146 78" stroke="var(--ink)" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M168 45 l3.5 10 l10 3.5 l-10 3.5 l-3.5 10 l-3.5 -10 l-10 -3.5 l10 -3.5 z" fill="var(--green)" />
+
+      <line x1="175" y1="215" x2="175" y2="110" stroke="var(--ink)" strokeWidth="4" strokeLinecap="round" />
+      <line x1="175" y1="110" x2="215" y2="110" stroke="var(--ink)" strokeWidth="4" strokeLinecap="round" />
+      <line x1="175" y1="160" x2="200" y2="140" stroke="var(--ink)" strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="210" y1="121" x2="210" y2="128" stroke="var(--ink)" strokeWidth="2.5" />
+      <circle cx="210" cy="116" r="5" fill="none" stroke="var(--ink)" strokeWidth="2.5" />
+
+      <path d="M190 128 C190 108 230 108 230 128 L236 168 C236 176 184 176 184 168 Z" fill="var(--orange)" stroke="var(--ink)" strokeWidth="2.5" strokeLinejoin="round" />
+      <ellipse cx="200" cy="132" rx="6" ry="10" fill="var(--orange-light)" opacity="0.6" />
+      <rect x="182" y="168" width="56" height="9" fill="var(--ink)" />
+      <circle cx="210" cy="186" r="6" fill="var(--ink)" />
+
+      <path d="M250 90 l3 8 l8 3 l-8 3 l-3 8 l-3 -8 l-8 -3 l8 -3 z" fill="var(--green)" />
+      <circle cx="170" cy="100" r="4" fill="var(--orange)" />
+      <path d="M245 150 l2.5 7 l7 2.5 l-7 2.5 l-2.5 7 l-2.5 -7 l-7 -2.5 l7 -2.5 z" fill="var(--orange)" opacity="0.85" />
+    </svg>
+  );
+}

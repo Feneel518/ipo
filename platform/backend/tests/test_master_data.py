@@ -152,6 +152,7 @@ def test_upcoming_schedule_is_estimated_from_close_date_before_listing_is_known(
     assert estimated.allotment_date == date(2026, 8, 31)
     assert estimated.refund_date == date(2026, 9, 1)
     assert estimated.credit_date == date(2026, 9, 1)
+    assert estimated.expected_listing_date == date(2026, 9, 2)
     assert estimated.allotment_date_is_estimated is True
 
 
@@ -209,6 +210,7 @@ def test_due_logic_and_api_contract_fields():
         "refund_date_is_estimated",
         "credit_date",
         "credit_date_is_estimated",
+        "expected_listing_date",
     }
     assert expected <= set(IpoDetail.model_fields)
 

@@ -35,6 +35,7 @@ def _card(ipo: Ipo) -> IpoCard:
         refund_date_is_estimated=ipo.refund_date_is_estimated,
         credit_date=ipo.credit_date,
         credit_date_is_estimated=ipo.credit_date_is_estimated,
+        expected_listing_date=ipo.expected_listing_date,
         listing_date=ipo.listing_date,
         price_low=ipo.price_low,
         price_high=ipo.price_high,

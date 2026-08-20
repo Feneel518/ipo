@@ -11,6 +11,7 @@ type IpoTimetableProps = {
   refundDateIsEstimated: boolean;
   creditDate: string | null;
   creditDateIsEstimated: boolean;
+  expectedListingDate: string | null;
   listingDate: string | null;
 };
 
@@ -31,22 +32,23 @@ function getTimelineProgress(dates: Array<string | null>, today: string) {
 }
 
 function dateParts(value: string | null) {
-  if (!value) return { weekday: "Date pending", date: "TBA" };
+  if (!value) return { meta: "Date pending", date: "TBA" };
   return {
-    weekday: displayDate(value, { weekday: "long" }),
-    date: displayDate(value, { day: "2-digit", month: "short", year: "numeric" }),
+    meta: `${displayDate(value, { year: "numeric" })} · ${displayDate(value, { weekday: "long" })}`,
+    date: displayDate(value, { day: "2-digit", month: "short" }),
   };
 }
 
-export function IpoTimetable({ companyName, openDate, closeDate, allotmentDate, allotmentDateIsEstimated, refundDate, refundDateIsEstimated, creditDate, creditDateIsEstimated, listingDate }: IpoTimetableProps) {
+export function IpoTimetable({ companyName, openDate, closeDate, allotmentDate, allotmentDateIsEstimated, refundDate, refundDateIsEstimated, creditDate, creditDateIsEstimated, expectedListingDate, listingDate }: IpoTimetableProps) {
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+  const displayedListingDate = listingDate ?? expectedListingDate;
   const milestones = [
     { label: "IPO opens", date: openDate, estimated: false },
     { label: "IPO closes", date: closeDate, estimated: false },
     { label: "Allotment", date: allotmentDate, estimated: allotmentDateIsEstimated },
     { label: "Refunds", date: refundDate, estimated: refundDateIsEstimated },
     { label: "Shares credited", date: creditDate, estimated: creditDateIsEstimated },
-    { label: "Listing day", date: listingDate, estimated: false },
+    { label: "Listing day", date: displayedListingDate, estimated: !listingDate && Boolean(expectedListingDate) },
   ];
   const progress = getTimelineProgress(milestones.map((milestone) => milestone.date), today);
   const timelineStyle = {
@@ -78,7 +80,7 @@ export function IpoTimetable({ companyName, openDate, closeDate, allotmentDate, 
                 <div>
                   <span>{label}</span>
                   <strong>{parts.date}</strong>
-                  <small>{parts.weekday}{estimated ? " · Estimated" : ""}</small>
+                  <small>{parts.meta}{estimated && <em>Estimated</em>}</small>
                 </div>
               </li>
             );

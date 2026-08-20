@@ -40,6 +40,7 @@ export interface IpoCardData {
   refund_date_is_estimated: boolean;
   credit_date: string | null;
   credit_date_is_estimated: boolean;
+  expected_listing_date: string | null;
   listing_date: string | null;
   price_low: string | null;
   price_high: string | null;
