@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { IpoTimetable } from "@/components/ipo-timetable";
 import { StatusPill } from "@/components/status-pill";
 import { SubscriptionMomentum } from "@/components/subscription-momentum";
 import { getIpo } from "@/lib/api";
@@ -75,36 +76,30 @@ export default async function IpoPage({ params }: { params: Params }) {
     : totalMultipleLabel.length >= 5
       ? " is-long"
       : "";
-  const shares = ipo.issue_size_shares ? `${quantity(ipo.issue_size_shares)} shares` : "—";
-  const issueSize = ipo.issue_size_crore
-    ? `${money(ipo.issue_size_crore)} crore${ipo.issue_size_crore_is_estimated ? " approx." : ""}`
-    : "—";
   const marketLot = ipo.lot_size ? `${ipo.lot_size.toLocaleString("en-IN")} shares` : "—";
-  const minimumBid = ipo.minimum_bid_quantity
-    ? `${ipo.minimum_bid_quantity.toLocaleString("en-IN")} shares`
-    : "—";
+  const ipoDates = ipo.open_date && ipo.close_date
+    ? `${displayDate(ipo.open_date)} – ${displayDate(ipo.close_date)}`
+    : displayDate(ipo.open_date ?? ipo.close_date);
+  const listingAt = [...new Set(
+    ipo.listings.map((listing) =>
+      `${listing.exchange} ${listing.segment === "SME" ? "SME" : "Mainboard"}`,
+    ),
+  )].join(" · ") || "—";
+  const issueType = ipo.market_type === "BOOK_BUILT"
+    ? "Book building IPO"
+    : ipo.market_type === "FIXED_PRICE"
+      ? "Fixed price IPO"
+      : humanizeLabel(ipo.issue_type);
 
   const issueFacts = [
-    ["Company name", companyName],
-    ["Issue type", humanizeLabel(ipo.issue_type)],
-    ["Issue status", humanizeLabel(ipo.lifecycle)],
-    ["Market type", humanizeLabel(ipo.market_type)],
-    ["Platform", ipo.platform ? humanizeLabel(ipo.platform) : "—"],
-    ["Exchange platform", ipo.exchange_platform ?? "—"],
-    ["NSE symbol", ipo.nse_symbol ?? "—"],
-    ["NSE series", ipo.nse_series ?? "—"],
-    ["BSE scrip code", ipo.bse_scrip_code ?? "—"],
-    ["ISIN", ipo.isin ?? "—"],
-    ["Face value", money(ipo.face_value)],
-    ["Price band low", money(ipo.price_low)],
-    ["Price band high", money(ipo.price_high)],
-    ["Final issue price", money(ipo.final_issue_price)],
-    ["Tick size", money(ipo.tick_size)],
+    ["IPO date", ipoDates],
+    ["Listing date", displayDate(ipo.listing_date)],
+    ["Face value", ipo.face_value ? `${money(ipo.face_value)} per share` : "—"],
+    ["Price band", priceBand(ipo.price_low, ipo.price_high)],
     ["Lot size", marketLot],
-    ["Minimum bid quantity", minimumBid],
-    ["Minimum retail investment", money(ipo.minimum_retail_investment)],
-    ["Issue size (shares)", shares],
-    ["Issue size", issueSize],
+    ["Sale type", "Not reported by the exchange"],
+    ["Issue type", issueType],
+    ["Listing at", listingAt],
   ] as const;
 
   return (
@@ -115,14 +110,24 @@ export default async function IpoPage({ params }: { params: Params }) {
         <div><div className="card-kicker"><StatusPill status={ipo.lifecycle} /><span>{ipo.listings.map((item) => `${item.exchange} ${item.segment}`).join(" · ")}</span></div><h1>{companyName}</h1><p>{ipo.isin ? `ISIN ${ipo.isin}` : "ISIN pending"} · {humanizeLabel(ipo.issue_type)}</p></div>
         <div className="price-block"><span>Price band</span><strong>{priceBand(ipo.price_low, ipo.price_high)}</strong><small>per equity share</small></div>
       </header>
-      <section className="timeline" aria-label="IPO timeline">
-        {[ ["Opens", ipo.open_date], ["Closes", ipo.close_date], ["Lists", ipo.listing_date] ].map(([label, date]) => <div key={label}><span>{label}</span><strong>{displayDate(date)}</strong></div>)}
-      </section>
+      <IpoTimetable companyName={companyName} openDate={ipo.open_date} closeDate={ipo.close_date} allotmentDate={ipo.allotment_date} allotmentDateIsEstimated={ipo.allotment_date_is_estimated} refundDate={ipo.refund_date} refundDateIsEstimated={ipo.refund_date_is_estimated} creditDate={ipo.credit_date} creditDateIsEstimated={ipo.credit_date_is_estimated} listingDate={ipo.listing_date} />
       <div className="detail-grid">
-        <section><p className="overline">Issue facts</p><h2>Complete issue details</h2><dl className="fact-table fact-table-complete">
+        <section className="issue-facts-panel"><div className="issue-facts-heading"><div><p className="overline">Issue facts</p><h2>Key IPO details</h2></div><span aria-hidden="true">08 / essentials</span></div><dl className="fact-table fact-table-complete" aria-label={`${companyName} key IPO details`}>
           {issueFacts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
         </dl></section>
-        <aside className="source-panel"><p className="overline">Source trail</p><h2>Exchange records</h2>{ipo.listings.map((listing) => <a href={listing.source_url} target="_blank" rel="noreferrer" key={`${listing.exchange}-${listing.symbol}`}><span>{listing.exchange} · {listing.segment}</span><strong>{listing.symbol ?? listing.scrip_code ?? "Official record"}</strong><small>{listing.is_stale ? "Source record currently stale" : "Verified in latest run"} ↗</small></a>)}<dl className="source-meta"><div><dt>Registrar</dt><dd>{ipo.registrar ?? "To be announced"}</dd></div><div><dt>Last master-data refresh</dt><dd>{ipo.master_data_last_fetched_at ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(ipo.master_data_last_fetched_at)) : "Pending"}</dd></div></dl></aside>
+        <aside className="source-panel" aria-labelledby="source-panel-title">
+          <header className="source-panel-heading">
+            <div><p className="overline">Source trail</p><h2 id="source-panel-title">Exchange records</h2></div>
+          </header>
+          <div className="source-record-list">
+            {ipo.listings.map((listing, index) => <a href={listing.source_url} target="_blank" rel="noreferrer" key={`${listing.exchange}-${listing.symbol}`}>
+              <span className="source-record-top"><b>{String(index + 1).padStart(2, "0")} · {listing.exchange} {listing.segment}</b><i className={listing.is_stale ? "is-stale" : ""}>{listing.is_stale ? "Stale" : "Verified"}</i></span>
+              <strong>{listing.symbol ?? listing.scrip_code ?? "Official record"}</strong>
+              <small>Open exchange record <b aria-hidden="true">↗</b></small>
+            </a>)}
+          </div>
+          <dl className="source-meta"><div><dt>Registrar</dt><dd>{ipo.registrar ?? "To be announced"}</dd></div><div><dt>Last master-data refresh</dt><dd>{ipo.master_data_last_fetched_at ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(ipo.master_data_last_fetched_at)) : "Pending"}</dd></div></dl>
+        </aside>
       </div>
       <section className="data-section subscription-section" id="demand-book">
         <div className="subscription-heading">

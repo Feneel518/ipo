@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from app.ingestion.http import get_json, source_client
 from app.ingestion.normalize import (
     decimal_value,
+    extract_schedule_dates,
     integer_value,
     investor_category,
     lifecycle,
@@ -28,6 +29,11 @@ PAST = f"{BASE}/api/public-past-issues"
 DETAIL = f"{BASE}/api/ipo-detail"
 ALL_EXCHANGE_CATEGORIES = f"{BASE}/api/ipo-active-category"
 IST = ZoneInfo("Asia/Kolkata")
+
+
+def _is_equity_issue(row: dict[str, Any]) -> bool:
+    security_type = str(row.get("securityType") or row.get("series") or "").upper()
+    return not any(label in security_type for label in ("DEBT", "BOND", "NCD"))
 
 
 def _subscription_category(value: Any) -> str | None:
@@ -119,6 +125,8 @@ class NSEAdapter:
                 if not isinstance(payload, list):
                     raise ValueError(f"NSE contract changed: {endpoint} is not a list")
                 for row in payload:
+                    if not _is_equity_issue(row):
+                        continue
                     key = str(row.get("symbol") or row.get("companyName") or "")
                     if key:
                         previous = rows.get(key, ({}, endpoint))[0]
@@ -135,6 +143,8 @@ class NSEAdapter:
                 payload = await get_json(client, PAST, params=params, headers=headers)
                 if isinstance(payload, list):
                     for row in payload:
+                        if not _is_equity_issue(row):
+                            continue
                         key = str(
                             row.get("symbol")
                             or row.get("companyName")
@@ -206,6 +216,7 @@ class NSEAdapter:
             for item in rows
             if isinstance(item, dict) and item.get("title")
         }
+        schedule = extract_schedule_dates(payload)
         low, high = price_band(details.get("Price Range") or details.get("Issue Price"))
         minimum = integer_value(details.get("Minimum Order Quantity"))
         rules: dict[str, BidRuleData] = {}
@@ -256,6 +267,8 @@ class NSEAdapter:
                 "lead_managers": [details["Book Running Lead Managers"]]
                 if details.get("Book Running Lead Managers")
                 else issue.lead_managers,
+                **schedule,
+                **{f"{field}_is_estimated": False for field in schedule},
                 "documents": documents,
                 "bid_rules": list(rules.values()),
                 "detail_raw": payload,
@@ -267,10 +280,18 @@ class NSEAdapter:
 
     def _normalize(self, source_id: str, row: dict[str, Any], endpoint: str) -> NormalizedIssue:
         name = str(row.get("companyName") or row.get("company_name") or source_id).strip()
-        opened = parse_date(row.get("issueStartDate") or row.get("issue_start_date"))
-        closed = parse_date(row.get("issueEndDate") or row.get("issue_end_date"))
+        opened = parse_date(
+            row.get("issueStartDate") or row.get("ipoStartDate") or row.get("issue_start_date")
+        )
+        closed = parse_date(
+            row.get("issueEndDate") or row.get("ipoEndDate") or row.get("issue_end_date")
+        )
         listed = parse_date(row.get("listingDate") or row.get("listing_date"))
-        low, high = price_band(row.get("issuePrice") or row.get("priceBand"))
+        schedule = extract_schedule_dates(row)
+        low, high = price_band(
+            row.get("issuePrice") or row.get("priceBand") or row.get("priceRange")
+        )
+        lifecycle_status = row.get("status") or row.get("issueStatus") or name
         offered = decimal_value(row.get("noOfSharesOffered") or row.get("issueSize"))
         bids = decimal_value(row.get("noOfSharesBid") or row.get("totalBidQuantity"))
         multiple = decimal_value(row.get("noOfTime") or row.get("subscription"))
@@ -301,9 +322,10 @@ class NSEAdapter:
             series=str(row.get("series") or "").upper() or None,
             source_status=str(row.get("status") or "") or None,
             isin=row.get("isin"),
-            lifecycle=lifecycle(row.get("status"), opened, closed, listed),
+            lifecycle=lifecycle(lifecycle_status, opened, closed, listed),
             open_date=opened,
             close_date=closed,
+            **schedule,
             listing_date=listed,
             price_low=low,
             price_high=high,

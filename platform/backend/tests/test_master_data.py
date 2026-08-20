@@ -2,16 +2,18 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from app.ingestion.bse import BSEAdapter
-from app.ingestion.nse import NSEAdapter
+from app.ingestion.nse import NSEAdapter, _is_equity_issue
 from app.ingestion.service import (
     _detail_is_due,
     _failure_retry,
+    _is_final,
     _next_failure_count,
     _next_refresh,
     _set_if_present,
+    _set_schedule_dates,
 )
 from app.ingestion.types import NormalizedIssue
-from app.models import Exchange, ExchangeListing, Lifecycle, MarketType, Segment
+from app.models import Exchange, ExchangeListing, Ipo, Lifecycle, MarketType, Segment
 from app.schemas import IpoDetail
 
 
@@ -113,6 +115,46 @@ def test_fixed_price_issue_and_source_issue_size_are_not_marked_estimated():
     assert normalized.issue_size_crore_is_estimated is False
 
 
+def test_schedule_dates_are_estimated_and_official_dates_take_precedence():
+    estimated = (
+        issue()
+        .model_copy(update={"listing_date": date(2026, 8, 26)})
+        .with_calculated_values()
+    )
+    assert estimated.allotment_date == date(2026, 8, 24)
+    assert estimated.refund_date == date(2026, 8, 25)
+    assert estimated.credit_date == date(2026, 8, 25)
+    assert estimated.allotment_date_is_estimated is True
+
+    ipo = Ipo(
+        company_name="Test Limited",
+        normalized_name="test",
+        slug="test",
+        lifecycle=Lifecycle.UPCOMING,
+    )
+    _set_schedule_dates(ipo, estimated)
+    official = estimated.model_copy(
+        update={"allotment_date": date(2026, 8, 23), "allotment_date_is_estimated": False}
+    )
+    _set_schedule_dates(ipo, official)
+    _set_schedule_dates(ipo, estimated)
+    assert ipo.allotment_date == date(2026, 8, 23)
+    assert ipo.allotment_date_is_estimated is False
+
+
+def test_upcoming_schedule_is_estimated_from_close_date_before_listing_is_known():
+    estimated = (
+        issue()
+        .model_copy(update={"close_date": date(2026, 8, 28), "listing_date": None})
+        .with_calculated_values()
+    )
+
+    assert estimated.allotment_date == date(2026, 8, 31)
+    assert estimated.refund_date == date(2026, 9, 1)
+    assert estimated.credit_date == date(2026, 9, 1)
+    assert estimated.allotment_date_is_estimated is True
+
+
 def test_lifecycle_refresh_schedule_and_backoff():
     now = datetime(2026, 8, 19, 12, tzinfo=UTC)
     assert _next_refresh(Lifecycle.UPCOMING, None, now) == (now + timedelta(hours=6), None)
@@ -128,6 +170,8 @@ def test_lifecycle_refresh_schedule_and_backoff():
     assert _failure_retry(now, 10) == now + timedelta(hours=24)
     assert _next_failure_count(None) == 1
     assert _next_failure_count(2) == 3
+    assert _is_final(Lifecycle.LISTED, date(2026, 8, 12), now) is True
+    assert _is_final(Lifecycle.LISTED, date(2026, 8, 13), now) is False
 
 
 def test_due_logic_and_api_contract_fields():
@@ -142,6 +186,7 @@ def test_due_logic_and_api_contract_fields():
         next_refresh_at=now - timedelta(minutes=1),
     )
     assert _detail_is_due(listing, now) is True
+    assert _detail_is_due(listing, now, Lifecycle.LISTED, date(2026, 8, 12)) is False
     listing.master_data_finalized_at = now
     assert _detail_is_due(listing, now) is False
     expected = {
@@ -158,8 +203,41 @@ def test_due_logic_and_api_contract_fields():
         "minimum_retail_investment",
         "bid_rules",
         "master_data_last_fetched_at",
+        "allotment_date",
+        "allotment_date_is_estimated",
+        "refund_date",
+        "refund_date_is_estimated",
+        "credit_date",
+        "credit_date_is_estimated",
     }
     assert expected <= set(IpoDetail.model_fields)
+
+
+def test_nse_past_issue_aliases_and_terminal_status_are_normalized():
+    row = {
+        "companyName": "Example Limited-Issue Withdrawn",
+        "symbol": "EXAMPLE",
+        "ipoStartDate": "01-AUG-2026",
+        "ipoEndDate": "05-AUG-2026",
+        "priceRange": "Rs.100 to Rs.110",
+        "listingDate": "-",
+        "securityType": "SME",
+    }
+
+    normalized = NSEAdapter()._normalize("EXAMPLE", row, "fixture")
+
+    assert normalized.open_date == date(2026, 8, 1)
+    assert normalized.close_date == date(2026, 8, 5)
+    assert normalized.price_low == Decimal("100")
+    assert normalized.price_high == Decimal("110")
+    assert normalized.lifecycle == Lifecycle.WITHDRAWN
+
+
+def test_nse_non_equity_issues_are_excluded():
+    assert _is_equity_issue({"securityType": "SME"}) is True
+    assert _is_equity_issue({"series": "EQ"}) is True
+    assert _is_equity_issue({"securityType": "DEBT"}) is False
+    assert _is_equity_issue({"securityType": "Secured NCD"}) is False
 
 
 def test_malformed_detail_contract_and_null_protection():

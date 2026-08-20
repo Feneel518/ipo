@@ -3,7 +3,7 @@ from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import Settings, get_settings
@@ -29,11 +29,17 @@ def _card(ipo: Ipo) -> IpoCard:
         lifecycle=ipo.lifecycle,
         open_date=ipo.open_date,
         close_date=ipo.close_date,
+        allotment_date=ipo.allotment_date,
+        allotment_date_is_estimated=ipo.allotment_date_is_estimated,
+        refund_date=ipo.refund_date,
+        refund_date_is_estimated=ipo.refund_date_is_estimated,
+        credit_date=ipo.credit_date,
+        credit_date_is_estimated=ipo.credit_date_is_estimated,
         listing_date=ipo.listing_date,
         price_low=ipo.price_low,
         price_high=ipo.price_high,
         lot_size=ipo.lot_size,
-        listings=ipo.listings,
+        listings=[listing for listing in ipo.listings if not listing.is_stale],
     )
 
 
@@ -51,7 +57,7 @@ def list_ipos(
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
 ) -> IpoPage:
     statement = select(Ipo).options(selectinload(Ipo.listings))
-    filters = []
+    filters = [Ipo.listings.any(ExchangeListing.is_stale.is_(False))]
     if status:
         filters.append(Ipo.lifecycle == status)
     if q:
@@ -64,6 +70,7 @@ def list_ipos(
         filters.append(Ipo.id < cursor)
     if exchange or segment:
         statement = statement.join(ExchangeListing)
+        filters.append(ExchangeListing.is_stale.is_(False))
         if exchange:
             filters.append(ExchangeListing.exchange == exchange)
         if segment:
@@ -169,7 +176,7 @@ def ipo_detail(slug: str, db: Annotated[Session, Depends(get_db)]) -> IpoDetail:
             }
         ),
         last_updated_at=ipo.updated_at,
-        sources=sorted({listing.exchange.value for listing in ipo.listings}),
+        sources=sorted({listing.exchange.value for listing in active_listings}),
     )
 
 
@@ -183,9 +190,13 @@ def calendar_events(month: str, db: Annotated[Session, Depends(get_db)]) -> list
         raise HTTPException(status_code=422, detail="month must use YYYY-MM") from None
     rows = db.scalars(
         select(Ipo).where(
+            Ipo.listings.any(ExchangeListing.is_stale.is_(False)),
             or_(
                 Ipo.open_date.between(start, end),
                 Ipo.close_date.between(start, end),
+                Ipo.allotment_date.between(start, end),
+                Ipo.refund_date.between(start, end),
+                Ipo.credit_date.between(start, end),
                 Ipo.listing_date.between(start, end),
             )
         )
@@ -195,6 +206,9 @@ def calendar_events(month: str, db: Annotated[Session, Depends(get_db)]) -> list
         for event_type, event_date in (
             ("OPENS", ipo.open_date),
             ("CLOSES", ipo.close_date),
+            ("ALLOTMENT", ipo.allotment_date),
+            ("REFUNDS", ipo.refund_date),
+            ("CREDIT", ipo.credit_date),
             ("LISTS", ipo.listing_date),
         ):
             if event_date and start <= event_date <= end:
@@ -213,14 +227,35 @@ def calendar_events(month: str, db: Annotated[Session, Depends(get_db)]) -> list
 @router.get("/meta/summary", response_model=SummaryOut)
 def summary(db: Annotated[Session, Depends(get_db)]) -> SummaryOut:
     def count_where(*conditions: object) -> int:
-        return db.scalar(select(func.count(func.distinct(Ipo.id))).where(*conditions)) or 0
+        return (
+            db.scalar(
+                select(func.count(func.distinct(Ipo.id))).where(
+                    Ipo.listings.any(ExchangeListing.is_stale.is_(False)), *conditions
+                )
+            )
+            or 0
+        )
 
     return SummaryOut(
         open=count_where(Ipo.lifecycle == Lifecycle.OPEN),
         upcoming=count_where(Ipo.lifecycle == Lifecycle.UPCOMING),
         listed=count_where(Ipo.lifecycle == Lifecycle.LISTED),
-        mainboard=count_where(Ipo.listings.any(ExchangeListing.segment == Segment.MAINBOARD)),
-        sme=count_where(Ipo.listings.any(ExchangeListing.segment == Segment.SME)),
+        mainboard=count_where(
+            Ipo.listings.any(
+                and_(
+                    ExchangeListing.segment == Segment.MAINBOARD,
+                    ExchangeListing.is_stale.is_(False),
+                )
+            )
+        ),
+        sme=count_where(
+            Ipo.listings.any(
+                and_(
+                    ExchangeListing.segment == Segment.SME,
+                    ExchangeListing.is_stale.is_(False),
+                )
+            )
+        ),
         last_updated_at=db.scalar(select(func.max(Ipo.updated_at))),
     )
 

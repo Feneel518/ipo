@@ -42,6 +42,12 @@ class NormalizedIssue(BaseModel):
     lifecycle: Lifecycle
     open_date: date | None = None
     close_date: date | None = None
+    allotment_date: date | None = None
+    allotment_date_is_estimated: bool = False
+    refund_date: date | None = None
+    refund_date_is_estimated: bool = False
+    credit_date: date | None = None
+    credit_date_is_estimated: bool = False
     listing_date: date | None = None
     price_low: Decimal | None = None
     price_high: Decimal | None = None
@@ -73,6 +79,26 @@ class NormalizedIssue(BaseModel):
 
     def with_calculated_values(self) -> "NormalizedIssue":
         updates: dict[str, Any] = {}
+        if self.listing_date is not None:
+            if self.allotment_date is None:
+                updates["allotment_date"] = previous_business_day(self.listing_date, 2)
+                updates["allotment_date_is_estimated"] = True
+            if self.refund_date is None:
+                updates["refund_date"] = previous_business_day(self.listing_date, 1)
+                updates["refund_date_is_estimated"] = True
+            if self.credit_date is None:
+                updates["credit_date"] = previous_business_day(self.listing_date, 1)
+                updates["credit_date_is_estimated"] = True
+        elif self.close_date is not None:
+            if self.allotment_date is None:
+                updates["allotment_date"] = next_business_day(self.close_date, 1)
+                updates["allotment_date_is_estimated"] = True
+            if self.refund_date is None:
+                updates["refund_date"] = next_business_day(self.close_date, 2)
+                updates["refund_date_is_estimated"] = True
+            if self.credit_date is None:
+                updates["credit_date"] = next_business_day(self.close_date, 2)
+                updates["credit_date_is_estimated"] = True
         applicable_price = self.final_issue_price or self.price_high
         if self.minimum_bid_quantity is not None and applicable_price is not None:
             updates["minimum_retail_investment"] = (
@@ -92,3 +118,23 @@ class NormalizedIssue(BaseModel):
     @staticmethod
     def fetched_now() -> datetime:
         return datetime.now(UTC)
+
+
+def previous_business_day(value: date, count: int) -> date:
+    current = value
+    remaining = count
+    while remaining > 0:
+        current = date.fromordinal(current.toordinal() - 1)
+        if current.weekday() < 5:
+            remaining -= 1
+    return current
+
+
+def next_business_day(value: date, count: int) -> date:
+    current = value
+    remaining = count
+    while remaining > 0:
+        current = date.fromordinal(current.toordinal() + 1)
+        if current.weekday() < 5:
+            remaining -= 1
+    return current

@@ -39,6 +39,12 @@ class IpoCard(BaseModel):
     lifecycle: Lifecycle
     open_date: date | None
     close_date: date | None
+    allotment_date: date | None
+    allotment_date_is_estimated: bool
+    refund_date: date | None
+    refund_date_is_estimated: bool
+    credit_date: date | None
+    credit_date_is_estimated: bool
     listing_date: date | None
     price_low: Decimal | None
     price_high: Decimal | None

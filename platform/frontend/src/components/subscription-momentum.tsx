@@ -1,7 +1,10 @@
 "use client";
 
+import { curveNatural } from "@visx/curve";
+import { chartCssVars, defaultScatterColors } from "@/components/charts/chart-context";
 import { Grid } from "@/components/charts/grid";
 import { Line, LineChart } from "@/components/charts/line-chart";
+import { ReferenceArea } from "@/components/charts/reference-area";
 import { ChartTooltip } from "@/components/charts/tooltip";
 import { XAxis } from "@/components/charts/x-axis";
 import type { Subscription } from "@/lib/types";
@@ -15,10 +18,10 @@ const categoryLabels: Record<string, string> = {
 };
 
 const categoryColors: Record<string, string> = {
-  TOTAL: "var(--ink)",
-  RETAIL: "var(--orange)",
-  NII: "var(--green)",
-  QIB: "#76518b",
+  TOTAL: defaultScatterColors[0],
+  RETAIL: defaultScatterColors[1],
+  NII: defaultScatterColors[2],
+  QIB: defaultScatterColors[3],
 };
 
 function checkpointLabel(value: string) {
@@ -33,6 +36,11 @@ function checkpointLabel(value: string) {
 
 function quantityLabel(value: number) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
+}
+
+function changeLabel(value: number) {
+  if (Math.abs(value) < 0.005) return "No change";
+  return `${value > 0 ? "+" : ""}${quantityLabel(value)}×`;
 }
 
 interface SubscriptionMomentumProps {
@@ -77,6 +85,8 @@ export function SubscriptionMomentum({ subscriptions, exchange, scope }: Subscri
     date: new Date(checkpoint.capturedAt),
     ...Object.fromEntries(categories.map((category) => [category, checkpoint.values.get(category) ?? 0])),
   }));
+  const latestCheckpoint = checkpoints.at(-1);
+  const previousCheckpoint = checkpoints.at(-2);
   const tableCheckpoints = checkpoints.slice(-8).reverse();
 
   return (
@@ -90,24 +100,62 @@ export function SubscriptionMomentum({ subscriptions, exchange, scope }: Subscri
       </div>
 
       <div className="momentum-legend" aria-label="Chart legend">
-        {categories.map((category) => <span className={`momentum-key key-${category.toLowerCase()}`} key={category}>{categoryLabels[category]}</span>)}
+        {categories.map((category) => {
+          const latest = latestCheckpoint?.values.get(category) ?? 0;
+          const previous = previousCheckpoint?.values.get(category);
+          const change = previous == null ? null : latest - previous;
+          return <div className={`momentum-key key-${category.toLowerCase()}`} key={category}>
+            <span>{categoryLabels[category]}</span>
+            <strong>{quantityLabel(latest)}×</strong>
+            <small className={change != null && change > 0 ? "is-up" : undefined}>{change == null ? "Latest" : changeLabel(change)}</small>
+          </div>;
+        })}
       </div>
 
-      <div className="momentum-chart" role="img" aria-label={`${categories.map((category) => categoryLabels[category]).join(", ")} subscription multiples across ${checkpoints.length} stored exchange checkpoints`}>
-        <LineChart data={chartData} xDataKey="date" aspectRatio="16 / 7" margin={{ top: 24, right: 28, bottom: 50, left: 28 }}>
+      <div className="momentum-chart" aria-label={`${categories.map((category) => categoryLabels[category]).join(", ")} subscription multiples across ${checkpoints.length} stored exchange checkpoints`}>
+        <span className="momentum-axis-label" aria-hidden="true">Subscription (×)</span>
+        <span className="momentum-threshold-label" aria-hidden="true">Below full subscription</span>
+        <LineChart
+          animationDuration={1100}
+          animationEasing="cubic-bezier(0.5, 1.35, 0.5, 1)"
+          aspectRatio="16 / 7"
+          data={chartData}
+          margin={{ top: 32, right: 28, bottom: 50, left: 28 }}
+          xDataKey="date"
+        >
           <Grid horizontal stroke="var(--rule)" strokeDasharray="3,7" />
-          {categories.map((category) => <Line
-            dataKey={category}
-            fadeEdges={false}
-            key={category}
+          <ReferenceArea
+            axisLabelColor="var(--orange)"
+            fadeEdges
+            fadeEdgesLength={10}
+            fill="color-mix(in oklch, var(--orange) 10%, transparent)"
+            fillOpacity={1}
+            markerColor="var(--orange)"
+            pattern="none"
+            patternColor={chartCssVars.foregroundMuted}
             showMarkers
+            stroke="color-mix(in oklch, var(--orange) 65%, transparent)"
+            strokeDasharray="4,4"
+            strokeStyle="dashed"
+            y1={0}
+            y2={1}
+            yAxisId="left"
+          />
+          {categories.map((category) => <Line
+            curve={curveNatural}
+            dataKey={category}
+            fadeEdges
+            key={category}
+            markers={{ radius: category === "TOTAL" ? 4 : 3 }}
+            showHighlight
+            showMarkers={checkpoints.length <= 12}
             stroke={categoryColors[category]}
-            strokeWidth={category === "TOTAL" ? 4 : 3}
+            strokeWidth={category === "TOTAL" ? 3.5 : 2.25}
           />)}
           <XAxis numTicks={Math.min(5, checkpoints.length)} tickMode="data" />
           <ChartTooltip
             dotVariant="ring"
-            indicatorColor="var(--ink)"
+            indicatorColor={chartCssVars.crosshair}
             rows={(point) => categories.map((category) => ({
               color: categoryColors[category],
               label: categoryLabels[category],

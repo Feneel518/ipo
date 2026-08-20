@@ -15,6 +15,10 @@ def test_nse_contract_normalization():
             "series": "SME",
             "issueStartDate": "20-Aug-2026",
             "issueEndDate": "22-Aug-2026",
+            "basisOfAllotmentDate": "24-Aug-2026",
+            "refundDate": "25-Aug-2026",
+            "creditOfSharesDate": "25-Aug-2026",
+            "listingDate": "26-Aug-2026",
             "issuePrice": "Rs. 100 to Rs. 110",
             "noOfTime": "2.35",
         },
@@ -23,6 +27,10 @@ def test_nse_contract_normalization():
     assert issue.segment == Segment.SME
     assert issue.lifecycle in {Lifecycle.UPCOMING, Lifecycle.OPEN, Lifecycle.CLOSED}
     assert issue.subscriptions[0].source_reported_multiple == Decimal("2.35")
+    assert issue.allotment_date.isoformat() == "2026-08-24"
+    assert issue.refund_date.isoformat() == "2026-08-25"
+    assert issue.credit_date.isoformat() == "2026-08-25"
+    assert issue.allotment_date_is_estimated is False
 
 
 def test_nse_all_exchange_categories_keep_raw_values_and_calculate_subscription():
@@ -99,6 +107,9 @@ def test_bse_contract_normalization():
             "End_Dt": "2026-08-19T00:00:00",
             "Price_Band": "57.00 - 60.00",
             "ListedOn": "2026-08-25T00:00:00",
+            "Basis_Of_Allotment_Date": "2026-08-21T00:00:00",
+            "Refund_Date": "2026-08-24T00:00:00",
+            "Credit_Of_Shares_Date": "2026-08-24T00:00:00",
             "IssuePrice": 60,
             "ListingDayClose": 72,
         },
@@ -109,6 +120,9 @@ def test_bse_contract_normalization():
     assert issue.listing_date.isoformat() == "2026-08-25"
     assert issue.issue_price == 60
     assert issue.listing_close == 72
+    assert issue.allotment_date.isoformat() == "2026-08-21"
+    assert issue.refund_date.isoformat() == "2026-08-24"
+    assert issue.credit_date.isoformat() == "2026-08-24"
 
 
 def test_price_band_ignores_amounts_in_appended_bse_notes():

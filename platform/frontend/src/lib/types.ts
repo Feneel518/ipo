@@ -34,6 +34,12 @@ export interface IpoCardData {
   lifecycle: Lifecycle;
   open_date: string | null;
   close_date: string | null;
+  allotment_date: string | null;
+  allotment_date_is_estimated: boolean;
+  refund_date: string | null;
+  refund_date_is_estimated: boolean;
+  credit_date: string | null;
+  credit_date_is_estimated: boolean;
   listing_date: string | null;
   price_low: string | null;
   price_high: string | null;
@@ -102,7 +108,7 @@ export interface Summary {
 export interface CalendarEvent {
   ipo_slug: string;
   company_name: string;
-  event_type: "OPENS" | "CLOSES" | "LISTS";
+  event_type: "OPENS" | "CLOSES" | "ALLOTMENT" | "REFUNDS" | "CREDIT" | "LISTS";
   event_date: string;
   lifecycle: Lifecycle;
 }

@@ -3,11 +3,13 @@ import unicodedata
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from app.models import Lifecycle, MarketType, Segment
 
 _NUMBER = re.compile(r"-?\d[\d,]*(?:\.\d+)?(?:[Ee][+-]?\d+)?")
 _LEGAL_SUFFIXES = re.compile(r"\b(limited|ltd|private|pvt|india)\b", re.I)
+IST = ZoneInfo("Asia/Kolkata")
 
 
 def decimal_value(value: Any) -> Decimal | None:
@@ -44,13 +46,100 @@ def price_band(value: Any) -> tuple[Decimal | None, Decimal | None]:
 def parse_date(value: Any) -> date | None:
     if not value:
         return None
-    raw = str(value).split("T")[0].strip()
-    for fmt in ("%d-%b-%Y", "%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d", "%d %b %Y"):
+    raw = str(value).strip()
+    raw = re.sub(r"^(\d{4}-\d{2}-\d{2})T.*$", r"\1", raw)
+    formats = (
+        "%d-%b-%Y",
+        "%d-%B-%Y",
+        "%d-%m-%Y",
+        "%d/%m/%Y",
+        "%Y-%m-%d",
+        "%d %b %Y",
+        "%d %B %Y",
+        "%B %d, %Y",
+        "%b %d, %Y",
+    )
+    for fmt in formats:
         try:
             return datetime.strptime(raw, fmt).date()
         except ValueError:
             continue
+    for pattern in (
+        r"\b\d{1,2}[- /](?:[A-Za-z]{3,9}|\d{1,2})[- /]\d{4}\b",
+        r"\b[A-Za-z]{3,9} \d{1,2},? \d{4}\b",
+    ):
+        match = re.search(pattern, raw)
+        if not match:
+            continue
+        candidate = match.group(0)
+        for fmt in formats:
+            try:
+                return datetime.strptime(candidate, fmt).date()
+            except ValueError:
+                continue
     return None
+
+
+_SCHEDULE_KEYS = {
+    "allotment_date": {
+        "allotmentdate",
+        "basisofallotmentdate",
+        "basisofallotment",
+        "finalisationofbasisofallotment",
+        "finalizationofbasisofallotment",
+        "finalisationofbasisofallotmentwiththedesignatedstockexchange",
+    },
+    "refund_date": {
+        "refunddate",
+        "initiationofrefunds",
+        "initiationofrefundsorunblockingoffunds",
+        "unblockingoffunds",
+        "fundsunblockingdate",
+    },
+    "credit_date": {
+        "creditdate",
+        "creditofsharesdate",
+        "creditofshares",
+        "creditofequityshares",
+        "creditofequitysharestodemataccounts",
+        "demattransferdate",
+    },
+}
+
+
+def _schedule_key(value: Any) -> str | None:
+    normalized = re.sub(r"[^a-z0-9]+", "", str(value or "").lower())
+    for field, aliases in _SCHEDULE_KEYS.items():
+        if normalized in aliases:
+            return field
+    return None
+
+
+def extract_schedule_dates(payload: Any) -> dict[str, date]:
+    """Extract official schedule dates from known exchange key and title/value shapes."""
+    found: dict[str, date] = {}
+
+    def visit(value: Any) -> None:
+        if isinstance(value, dict):
+            title_field = _schedule_key(value.get("title") or value.get("label"))
+            if title_field:
+                parsed = parse_date(value.get("value") or value.get("date"))
+                if parsed:
+                    found[title_field] = parsed
+            for key, child in value.items():
+                field = _schedule_key(key)
+                if field:
+                    parsed = parse_date(child)
+                    if parsed:
+                        found[field] = parsed
+                if isinstance(child, (dict, list)):
+                    visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+
+    visit(payload)
+    return found
 
 
 def normalize_name(value: str) -> str:
@@ -98,11 +187,11 @@ def lifecycle(
     *,
     today: date | None = None,
 ) -> Lifecycle:
-    current = today or date.today()
+    current = today or datetime.now(IST).date()
     raw = str(status or "").upper()
     if "WITHDRAW" in raw:
         return Lifecycle.WITHDRAWN
-    if "CANCEL" in raw:
+    if "CANCEL" in raw or "POSTPON" in raw:
         return Lifecycle.CANCELLED
     if listing_date and listing_date <= current:
         return Lifecycle.LISTED

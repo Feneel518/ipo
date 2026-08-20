@@ -4,6 +4,7 @@ from typing import Any
 from app.ingestion.http import get_json, source_client
 from app.ingestion.normalize import (
     decimal_value,
+    extract_schedule_dates,
     integer_value,
     investor_category,
     lifecycle,
@@ -137,6 +138,7 @@ class BSEAdapter:
         self, issue: NormalizedIssue, detail: dict[str, Any], payload: dict[str, Any]
     ) -> NormalizedIssue:
         low, high = price_band(detail.get("Price_Band"))
+        schedule = extract_schedule_dates(payload)
         minimum = integer_value(detail.get("Minimum_Bid_Quantity"))
         rules: list[BidRuleData] = []
         for key, value in detail.items():
@@ -185,6 +187,8 @@ class BSEAdapter:
                 else issue.market_type,
                 "registrar": str(detail.get("Registrar") or "").split("^")[0]
                 or issue.registrar,
+                **schedule,
+                **{f"{field}_is_estimated": False for field in schedule},
                 "documents": documents,
                 "bid_rules": rules,
                 "detail_raw": payload,
@@ -217,6 +221,7 @@ class BSEAdapter:
         opened = parse_date(row.get("Start_Dt") or row.get("ISSUE_START_DT"))
         closed = parse_date(row.get("End_Dt") or row.get("ISSUE_END_DT"))
         listed = parse_date(row.get("Listing_Dt") or row.get("LISTING_DATE") or row.get("ListedOn"))
+        schedule = extract_schedule_dates(row)
         low, high = price_band(row.get("Price_Band") or row.get("PRICE_BAND"))
         offered = decimal_value(row.get("OFFERED_QTY") or row.get("Issue_Qty"))
         bids = decimal_value(row.get("BID_QTY") or row.get("CUMM_QTY"))
@@ -245,6 +250,7 @@ class BSEAdapter:
             lifecycle=lifecycle(row.get("Status"), opened, closed, listed),
             open_date=opened,
             close_date=closed,
+            **schedule,
             listing_date=listed,
             price_low=low,
             price_high=high,

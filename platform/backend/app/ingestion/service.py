@@ -41,12 +41,35 @@ def _set_if_present(target: object, values: dict[str, object]) -> None:
             setattr(target, key, value)
 
 
+def _set_schedule_dates(ipo: Ipo, issue: NormalizedIssue) -> None:
+    """Prefer exchange-reported dates while allowing estimates to be refreshed."""
+    for field in ("allotment_date", "refund_date", "credit_date"):
+        incoming = getattr(issue, field)
+        if incoming is None:
+            continue
+        estimated_field = f"{field}_is_estimated"
+        incoming_is_estimated = getattr(issue, estimated_field)
+        current = getattr(ipo, field)
+        current_is_estimated = getattr(ipo, estimated_field)
+        if current is None or current_is_estimated or not incoming_is_estimated:
+            setattr(ipo, field, incoming)
+            setattr(ipo, estimated_field, incoming_is_estimated)
+
+
+def _is_final(lifecycle: Lifecycle, listing_date, now: datetime) -> bool:
+    if lifecycle in {Lifecycle.WITHDRAWN, Lifecycle.CANCELLED}:
+        return True
+    return bool(
+        lifecycle == Lifecycle.LISTED
+        and listing_date
+        and (now.date() - listing_date).days >= 7
+    )
+
+
 def _next_refresh(
     lifecycle: Lifecycle, listing_date, now: datetime
 ) -> tuple[datetime | None, datetime | None]:
-    if lifecycle in {Lifecycle.WITHDRAWN, Lifecycle.CANCELLED}:
-        return None, now
-    if lifecycle == Lifecycle.LISTED and listing_date and (now.date() - listing_date).days >= 7:
+    if _is_final(lifecycle, listing_date, now):
         return None, now
     interval = {
         Lifecycle.UPCOMING: timedelta(hours=6),
@@ -57,7 +80,14 @@ def _next_refresh(
     return now + interval, None
 
 
-def _detail_is_due(listing: ExchangeListing | None, now: datetime) -> bool:
+def _detail_is_due(
+    listing: ExchangeListing | None,
+    now: datetime,
+    lifecycle: Lifecycle | None = None,
+    listing_date=None,
+) -> bool:
+    if lifecycle is not None and _is_final(lifecycle, listing_date, now):
+        return False
     if listing is None or listing.master_data_last_fetched_at is None:
         return True
     if listing.master_data_finalized_at is not None:
@@ -248,6 +278,7 @@ def _upsert_issue(
         ipo,
         shared_values,
     )
+    _set_schedule_dates(ipo, issue)
     ipo.issue_type = "IPO"
     if issue.market_type != MarketType.UNKNOWN:
         ipo.market_type = issue.market_type
@@ -296,8 +327,11 @@ def _upsert_issue(
     listing.last_seen_at = datetime.now(UTC)
     listing.missing_runs = 0
     listing.is_stale = False
+    now = datetime.now(UTC)
+    if _is_final(issue.lifecycle, issue.listing_date, now):
+        listing.next_refresh_at = None
+        listing.master_data_finalized_at = listing.master_data_finalized_at or now
     if detail_attempted:
-        now = datetime.now(UTC)
         if detail_error:
             listing.detail_last_error = detail_error[:4000]
             if detail_error.startswith("subscription:"):
@@ -445,7 +479,12 @@ async def ingest_exchange(adapter, year: int) -> bool:
                 issue.source_id
                 for issue in issues
                 if issue.lifecycle == Lifecycle.OPEN
-                or _detail_is_due(existing_listings.get(issue.source_id), now)
+                or _detail_is_due(
+                    existing_listings.get(issue.source_id),
+                    now,
+                    issue.lifecycle,
+                    issue.listing_date,
+                )
                 or (
                     existing_listings.get(issue.source_id) is not None
                     and existing_listings[issue.source_id].ipo.lifecycle != issue.lifecycle
