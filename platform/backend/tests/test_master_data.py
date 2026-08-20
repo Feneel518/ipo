@@ -3,7 +3,13 @@ from decimal import Decimal
 
 from app.ingestion.bse import BSEAdapter
 from app.ingestion.nse import NSEAdapter
-from app.ingestion.service import _detail_is_due, _failure_retry, _next_refresh, _set_if_present
+from app.ingestion.service import (
+    _detail_is_due,
+    _failure_retry,
+    _next_failure_count,
+    _next_refresh,
+    _set_if_present,
+)
 from app.ingestion.types import NormalizedIssue
 from app.models import Exchange, ExchangeListing, Lifecycle, MarketType, Segment
 from app.schemas import IpoDetail
@@ -120,6 +126,8 @@ def test_lifecycle_refresh_schedule_and_backoff():
     assert _next_refresh(Lifecycle.CANCELLED, None, now) == (None, now)
     assert _failure_retry(now, 1) == now + timedelta(hours=1)
     assert _failure_retry(now, 10) == now + timedelta(hours=24)
+    assert _next_failure_count(None) == 1
+    assert _next_failure_count(2) == 3
 
 
 def test_due_logic_and_api_contract_fields():

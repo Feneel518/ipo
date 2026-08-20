@@ -69,6 +69,11 @@ def _failure_retry(now: datetime, failure_count: int) -> datetime:
     return now + timedelta(hours=min(2 ** max(failure_count - 1, 0), 24))
 
 
+def _next_failure_count(current: int | None) -> int:
+    """Handle new ORM objects whose database default has not been applied yet."""
+    return (current or 0) + 1
+
+
 def _payload_hash(payload: dict) -> str:
     encoded = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest()
@@ -302,7 +307,9 @@ def _upsert_issue(
                 listing.detail_failure_count = 0
                 listing.next_refresh_at = now + timedelta(minutes=5)
             else:
-                listing.detail_failure_count += 1
+                listing.detail_failure_count = _next_failure_count(
+                    listing.detail_failure_count
+                )
                 listing.next_refresh_at = _failure_retry(now, listing.detail_failure_count)
         else:
             listing.master_data_last_fetched_at = issue.detail_fetched_at or now
