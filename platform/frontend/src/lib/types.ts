@@ -27,6 +27,35 @@ export interface BidRule {
   maximum_subscription_amount: string | null;
 }
 
+export interface ReservationRow {
+  category: string;
+  parent_category: string | null;
+  shares: string;
+  percentage_net: string | null;
+  percentage_total: string;
+  max_allottees: number | null;
+  source_url: string;
+  source_type: string;
+  as_of_date: string | null;
+  is_actual: boolean;
+  is_derived: boolean;
+}
+
+export interface ReservationSummary {
+  total_issue_shares: string;
+  net_offer_shares: string;
+  reserved_shares: string;
+  rows: ReservationRow[];
+}
+
+export interface LotApplication {
+  category: string;
+  application_kind: "MIN" | "MAX";
+  lots: number;
+  shares: number;
+  amount: string;
+}
+
 export interface IpoCardData {
   id: number;
   company_name: string;
@@ -86,6 +115,8 @@ export interface IpoDetailData extends IpoCardData {
   documents: { document_type: string; title: string; url: string }[];
   subscriptions: Subscription[];
   bid_rules: BidRule[];
+  reservation_summary: ReservationSummary | null;
+  lot_size_applications: LotApplication[];
   master_data_last_fetched_at: string | null;
   master_data_sources: string[];
   last_updated_at: string;
