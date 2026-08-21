@@ -94,6 +94,11 @@ def build_reservation_summary(ipo: Ipo) -> dict[str, object] | None:
     total_issue = reported_total if reported_total >= known_total else known_total
 
     minimum_allotment = ipo.minimum_bid_quantity or ipo.lot_size
+    minimum_application_shares = {
+        str(row["category"]): int(row["shares"])
+        for row in build_lot_applications(ipo, Segment.MAINBOARD)
+        if row["application_kind"] == "MIN"
+    }
     rows: list[dict[str, object]] = []
     order = [
         "QIB",
@@ -115,12 +120,7 @@ def build_reservation_summary(ipo: Ipo) -> dict[str, object] | None:
         shares = Decimal(source.shares)
         max_allottees = None
         if minimum_allotment and category in {"RETAIL", "INDIVIDUAL", "BNII", "SNII"}:
-            if category in {"BNII", "SNII"} and ipo.price_high:
-                lot_value = Decimal(ipo.price_high) * Decimal(ipo.lot_size or minimum_allotment)
-                base_lots = _lots_at_or_below(Decimal("200000"), lot_value) + 1
-                allotment_quantity = base_lots * (ipo.lot_size or minimum_allotment)
-            else:
-                allotment_quantity = minimum_allotment
+            allotment_quantity = minimum_application_shares.get(category, minimum_allotment)
             if allotment_quantity:
                 max_allottees = _whole(shares / Decimal(allotment_quantity))
         rows.append(

@@ -91,7 +91,7 @@ def test_reservation_summary_computes_totals_percentages_and_allottees():
     assert rows["EMPLOYEE"]["percentage_net"] is None
     assert rows["RETAIL"]["max_allottees"] == 191925
     assert rows["SNII"]["max_allottees"] == 1958
-    assert rows["BNII"]["max_allottees"] == 3916
+    assert rows["BNII"]["max_allottees"] == 818
 
 
 def test_anchor_shares_are_extracted_from_nse_issue_details():

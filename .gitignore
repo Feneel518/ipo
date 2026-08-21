@@ -24,9 +24,9 @@
 # Local runtime output
 *.log
 **/*.log
+.codex-screenshots/
 
 # Editors and operating systems
 .DS_Store
 .idea/
 .vscode/
-

@@ -102,7 +102,7 @@ export default async function IpoPage({ params }: { params: Params }) {
           <dl className="source-meta"><div><dt>Registrar</dt><dd>{ipo.registrar ?? "To be announced"}</dd></div><div><dt>Last master-data refresh</dt><dd>{ipo.master_data_last_fetched_at ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" }).format(new Date(ipo.master_data_last_fetched_at)) : "Pending"}</dd></div></dl>
         </aside>
       </div>
-      <OfferStructure ipo={ipo} />
+      <OfferStructure ipo={ipo} latestSubscriptions={latest} />
       {ipo.lifecycle === "OPEN" && <section className="live-book" id="demand-book">
         <header className="live-book-heading">
           <div><p className="overline">Live issue demand</p><h2>The book,<br /><em>in motion.</em></h2><p>Follow subscription as confirmed exchange bids enter the book.</p></div>
