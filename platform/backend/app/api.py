@@ -8,6 +8,11 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import Settings, get_settings
 from app.db import get_db
+from app.lifecycle import (
+    current_market_date,
+    effective_lifecycle,
+    effective_lifecycle_expression,
+)
 from app.models import Exchange, ExchangeListing, IngestionRun, Ipo, Lifecycle, Segment
 from app.schemas import (
     CalendarEvent,
@@ -21,12 +26,12 @@ from app.schemas import (
 router = APIRouter(prefix="/api/v1")
 
 
-def _card(ipo: Ipo) -> IpoCard:
+def _card(ipo: Ipo, *, today: date | None = None) -> IpoCard:
     return IpoCard(
         id=ipo.id,
         company_name=ipo.company_name,
         slug=ipo.slug,
-        lifecycle=ipo.lifecycle,
+        lifecycle=effective_lifecycle(ipo, today=today),
         open_date=ipo.open_date,
         close_date=ipo.close_date,
         allotment_date=ipo.allotment_date,
@@ -57,10 +62,12 @@ def list_ipos(
     cursor: Annotated[int | None, Query(ge=1)] = None,
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
 ) -> IpoPage:
+    today = current_market_date()
+    lifecycle = effective_lifecycle_expression(today=today)
     statement = select(Ipo).options(selectinload(Ipo.listings))
     filters = [Ipo.listings.any(ExchangeListing.is_stale.is_(False))]
     if status:
-        filters.append(Ipo.lifecycle == status)
+        filters.append(lifecycle == status)
     if q:
         filters.append(Ipo.company_name.ilike(f"%{q.strip()}%"))
     if open_from:
@@ -94,7 +101,7 @@ def list_ipos(
     rows = rows[:limit]
     last_updated = db.scalar(select(func.max(Ipo.updated_at)))
     return IpoPage(
-        data=[_card(row) for row in rows],
+        data=[_card(row, today=today) for row in rows],
         meta=PageMeta(
             next_cursor=rows[-1].id if has_more and rows else None, last_updated_at=last_updated
         ),
@@ -103,6 +110,7 @@ def list_ipos(
 
 @router.get("/ipos/{slug}", response_model=IpoDetail)
 def ipo_detail(slug: str, db: Annotated[Session, Depends(get_db)]) -> IpoDetail:
+    today = current_market_date()
     ipo = db.scalar(
         select(Ipo)
         .where(Ipo.slug == slug)
@@ -141,7 +149,7 @@ def ipo_detail(slug: str, db: Annotated[Session, Depends(get_db)]) -> IpoDetail:
         if listing.master_data_last_fetched_at is not None
     ]
     return IpoDetail(
-        **_card(ipo).model_dump(),
+        **_card(ipo, today=today).model_dump(),
         isin=ipo.isin,
         issue_type=ipo.issue_type,
         market_type=ipo.market_type,
@@ -183,6 +191,7 @@ def ipo_detail(slug: str, db: Annotated[Session, Depends(get_db)]) -> IpoDetail:
 
 @router.get("/calendar", response_model=list[CalendarEvent])
 def calendar_events(month: str, db: Annotated[Session, Depends(get_db)]) -> list[CalendarEvent]:
+    today = current_market_date()
     try:
         year, month_number = (int(part) for part in month.split("-"))
         start = date(year, month_number, 1)
@@ -219,7 +228,7 @@ def calendar_events(month: str, db: Annotated[Session, Depends(get_db)]) -> list
                         company_name=ipo.company_name,
                         event_type=event_type,
                         event_date=event_date,
-                        lifecycle=ipo.lifecycle,
+                        lifecycle=effective_lifecycle(ipo, today=today),
                     )
                 )
     return sorted(events, key=lambda event: (event.event_date, event.company_name))
@@ -227,6 +236,8 @@ def calendar_events(month: str, db: Annotated[Session, Depends(get_db)]) -> list
 
 @router.get("/meta/summary", response_model=SummaryOut)
 def summary(db: Annotated[Session, Depends(get_db)]) -> SummaryOut:
+    today = current_market_date()
+    lifecycle = effective_lifecycle_expression(today=today)
     def count_where(*conditions: object) -> int:
         return (
             db.scalar(
@@ -238,9 +249,9 @@ def summary(db: Annotated[Session, Depends(get_db)]) -> SummaryOut:
         )
 
     return SummaryOut(
-        open=count_where(Ipo.lifecycle == Lifecycle.OPEN),
-        upcoming=count_where(Ipo.lifecycle == Lifecycle.UPCOMING),
-        listed=count_where(Ipo.lifecycle == Lifecycle.LISTED),
+        open=count_where(lifecycle == Lifecycle.OPEN),
+        upcoming=count_where(lifecycle == Lifecycle.UPCOMING),
+        listed=count_where(lifecycle == Lifecycle.LISTED),
         mainboard=count_where(
             Ipo.listings.any(
                 and_(

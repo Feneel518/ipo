@@ -2,15 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
 import { getCalendar } from "@/lib/api";
-import { displayCompanyName, displayDate, humanizeLabel } from "@/lib/format";
+import { displayCompanyName, displayDate, humanizeLabel, indiaDateKey } from "@/lib/format";
 
 export const metadata: Metadata = { title: "IPO Calendar", description: "IPO opening, closing and listing dates across NSE and BSE." };
 type Search = Promise<{ month?: string }>;
 
 export default async function CalendarPage({ searchParams }: { searchParams: Search }) {
   const search = await searchParams;
-  const now = new Date();
-  const fallback = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const fallback = indiaDateKey().slice(0, 7);
   const month = /^\d{4}-\d{2}$/.test(search.month ?? "") ? search.month! : fallback;
   const events = await getCalendar(month);
   const title = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "Asia/Kolkata" }).format(new Date(`${month}-01T00:00:00+05:30`));

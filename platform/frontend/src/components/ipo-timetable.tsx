@@ -1,5 +1,8 @@
+"use client";
+
 import type { CSSProperties } from "react";
-import { displayDate } from "@/lib/format";
+import { useEffect, useState } from "react";
+import { displayDate, indiaDateKey } from "@/lib/format";
 
 type IpoTimetableProps = {
   companyName: string;
@@ -13,6 +16,7 @@ type IpoTimetableProps = {
   creditDateIsEstimated: boolean;
   expectedListingDate: string | null;
   listingDate: string | null;
+  initialToday: string;
 };
 
 function getTimelineProgress(dates: Array<string | null>, today: string) {
@@ -39,8 +43,22 @@ function dateParts(value: string | null) {
   };
 }
 
-export function IpoTimetable({ companyName, openDate, closeDate, allotmentDate, allotmentDateIsEstimated, refundDate, refundDateIsEstimated, creditDate, creditDateIsEstimated, expectedListingDate, listingDate }: IpoTimetableProps) {
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+export function IpoTimetable({ companyName, openDate, closeDate, allotmentDate, allotmentDateIsEstimated, refundDate, refundDateIsEstimated, creditDate, creditDateIsEstimated, expectedListingDate, listingDate, initialToday }: IpoTimetableProps) {
+  const [today, setToday] = useState(initialToday);
+
+  useEffect(() => {
+    const syncToday = () => setToday(indiaDateKey());
+    syncToday();
+    const timer = window.setInterval(syncToday, 60_000);
+    document.addEventListener("visibilitychange", syncToday);
+    window.addEventListener("focus", syncToday);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", syncToday);
+      window.removeEventListener("focus", syncToday);
+    };
+  }, []);
+
   const displayedListingDate = listingDate ?? expectedListingDate;
   const milestones = [
     { label: "IPO opens", date: openDate, estimated: false },
@@ -50,18 +68,21 @@ export function IpoTimetable({ companyName, openDate, closeDate, allotmentDate, 
     { label: "Shares credited", date: creditDate, estimated: creditDateIsEstimated },
     { label: "Listing day", date: displayedListingDate, estimated: !listingDate && Boolean(expectedListingDate) },
   ];
-  const progress = getTimelineProgress(milestones.map((milestone) => milestone.date), today);
+  const milestoneDates = milestones.map((milestone) => milestone.date);
+  const progress = getTimelineProgress(milestoneDates, today);
+  const knownDates = milestoneDates.filter((date): date is string => Boolean(date));
+  const showToday = knownDates.length > 0 && today >= knownDates[0] && today <= knownDates.at(-1)!;
   const timelineStyle = {
     "--timeline-progress": progress,
     "--timeline-position": `${8.333 + (progress * 83.334)}%`,
-    "--timeline-position-mobile": `${15 + (progress * 390)}px`,
+    "--timeline-position-percent": `${progress * 100}%`,
   } as CSSProperties;
 
   return (
     <section className="ipo-timetable" aria-labelledby="ipo-timetable-title">
       <header className="ipo-timetable-heading">
         <div>
-          <p className="overline">Tentative schedule</p>
+          <p className="overline">IPO schedule</p>
           <h2 id="ipo-timetable-title">IPO timetable</h2>
         </div>
         <span>{Math.round(progress * 100)}% through schedule</span>
@@ -69,7 +90,11 @@ export function IpoTimetable({ companyName, openDate, closeDate, allotmentDate, 
 
       <div className="ipo-timeline-track" style={timelineStyle}>
         <span className="ipo-timeline-progress" role="progressbar" aria-label="IPO schedule progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)} />
-        {progress > 0 && progress < 1 && <span className="ipo-timeline-now" aria-label={`Today, ${displayDate(today)}`}>Today</span>}
+        {showToday && <span className="ipo-timeline-now" aria-label={`Today, ${displayDate(today)}`}>Today: {dateParts(today).date}</span>}
+        <div className="ipo-timeline-range" aria-hidden="true">
+          <span><small>Opens</small><strong>{dateParts(openDate).date}</strong></span>
+          <span><small>Lists</small><strong>{dateParts(displayedListingDate).date}</strong></span>
+        </div>
         <ol className="ipo-timeline" aria-label={`${companyName} IPO timetable`}>
           {milestones.map(({ label, date, estimated }, index) => {
             const parts = dateParts(date);
@@ -88,7 +113,7 @@ export function IpoTimetable({ companyName, openDate, closeDate, allotmentDate, 
         </ol>
       </div>
 
-      <p className="ipo-timetable-note">Dates marked estimated use the standard exchange timeline until an official date is reported.</p>
+      <p className="ipo-timetable-note">Only dates marked Estimated use the standard exchange timeline. Unmarked dates are exchange-reported.</p>
     </section>
   );
 }

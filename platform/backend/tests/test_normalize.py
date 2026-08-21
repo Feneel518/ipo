@@ -10,7 +10,8 @@ from app.ingestion.normalize import (
     price_band,
     segment,
 )
-from app.models import Lifecycle, Segment
+from app.lifecycle import effective_lifecycle
+from app.models import Ipo, Lifecycle, Segment
 
 
 def test_indian_price_band_and_dates():
@@ -58,3 +59,17 @@ def test_lifecycle_is_date_driven():
         )
         == Lifecycle.CANCELLED
     )
+
+
+def test_effective_lifecycle_corrects_stale_persisted_status():
+    ipo = Ipo(
+        company_name="Sunshine Pictures Limited",
+        normalized_name="sunshine pictures",
+        slug="sunshine-pictures-limited",
+        lifecycle=Lifecycle.OPEN,
+        open_date=date(2026, 8, 18),
+        close_date=date(2026, 8, 20),
+    )
+
+    assert effective_lifecycle(ipo, today=date(2026, 8, 20)) == Lifecycle.OPEN
+    assert effective_lifecycle(ipo, today=date(2026, 8, 21)) == Lifecycle.CLOSED
