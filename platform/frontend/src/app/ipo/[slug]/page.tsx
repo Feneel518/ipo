@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { ListingBellIllustration } from "@/components/illustrations";
+import { IpoMarketIllustration } from "@/components/ipo-market-illustration";
 import { IpoTimetable } from "@/components/ipo-timetable";
 import { StatusPill } from "@/components/status-pill";
 import { SubscriptionMomentum } from "@/components/subscription-momentum";
@@ -78,7 +78,7 @@ export default async function IpoPage({ params }: { params: Params }) {
       <header className="detail-hero">
         <div><div className="card-kicker"><StatusPill status={ipo.lifecycle} /><span>{ipo.listings.map((item) => `${item.exchange} ${item.segment}`).join(" · ")}</span></div><h1>{companyName}</h1><p>{ipo.isin ? `ISIN ${ipo.isin}` : "ISIN pending"} · {humanizeLabel(ipo.issue_type)}</p></div>
         <div className="detail-hero-aside">
-          <ListingBellIllustration className="detail-hero-illustration" />
+          <IpoMarketIllustration className="detail-hero-illustration" />
           <div className="price-block"><span>Price band</span><strong>{priceBand(ipo.price_low, ipo.price_high)}</strong><small>per equity share</small></div>
         </div>
       </header>

@@ -51,6 +51,8 @@ export interface ChartTooltipProps {
   }) => React.ReactNode;
   /** Custom row renderer - return array of TooltipRow */
   rows?: (point: Record<string, unknown>) => TooltipRow[];
+  /** Custom title derived from the hovered point. */
+  title?: (point: Record<string, unknown>) => string;
   /**
    * Override tooltip dot fill. When omitted and `rows` is set, dot colors match row colors.
    * When a function, receives the hovered point and line config.
@@ -107,6 +109,7 @@ const ChartTooltipInner = memo(function ChartTooltipInner({
   indicatorColor: indicatorColorProp,
   content,
   rows: rowsRenderer,
+  title: titleRenderer,
   dotColor: dotColorProp,
   children,
   className = "",
@@ -248,9 +251,12 @@ const ChartTooltipInner = memo(function ChartTooltipInner({
     if (barXAccessor) {
       return barXAccessor(tooltipData.point);
     }
+    if (titleRenderer) {
+      return titleRenderer(tooltipData.point);
+    }
     // For line/area charts, use the date
     return weekdayDateFmt.format(xAccessor(tooltipData.point));
-  }, [tooltipData, barXAccessor, xAccessor]);
+  }, [tooltipData, barXAccessor, titleRenderer, xAccessor]);
 
   const tooltipContent = (
     <>

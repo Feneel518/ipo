@@ -31,6 +31,8 @@ export interface LineChartProps {
   data: Record<string, unknown>[];
   /** Key in data for the x-axis (date). Default: "date" */
   xDataKey?: string;
+  /** Optional string field used for x-axis and date-pill labels. */
+  dateLabelKey?: string;
   /** Chart margins */
   margin?: Partial<Margin>;
   /** Animation duration in milliseconds. Default: 1100 */
@@ -142,6 +144,7 @@ interface ChartInnerProps {
   height: number;
   data: Record<string, unknown>[];
   xDataKey: string;
+  dateLabelKey?: string;
   margin: Margin;
   animationDuration: number;
   animationEasing?: string;
@@ -164,6 +167,7 @@ function ChartInner({
   height,
   data,
   xDataKey,
+  dateLabelKey,
   margin,
   animationDuration,
   animationEasing,
@@ -190,6 +194,7 @@ function ChartInner({
       clipPathId="chart-grow-clip"
       containerRef={containerRef}
       data={data}
+      dateLabelKey={dateLabelKey}
       enterTransition={enterTransition}
       height={height}
       lines={lines}
@@ -213,6 +218,7 @@ function ChartInner({
 export function LineChart({
   data,
   xDataKey = "date",
+  dateLabelKey,
   margin: marginProp,
   animationDuration = 1100,
   animationEasing,
@@ -270,6 +276,7 @@ export function LineChart({
             chartStatus={status}
             containerRef={containerRef}
             data={data}
+            dateLabelKey={dateLabelKey}
             enterTransition={enterTransition}
             height={height}
             loadingLabel={loadingLabel}
