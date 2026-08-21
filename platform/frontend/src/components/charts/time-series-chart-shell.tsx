@@ -131,6 +131,8 @@ export interface TimeSeriesChartInnerProps {
   height: number;
   data: Record<string, unknown>[];
   xDataKey: string;
+  /** Optional string field used instead of formatting the x value as a date label. */
+  dateLabelKey?: string;
   margin: Margin;
   animationDuration: number;
   animationEasing?: string;
@@ -181,6 +183,7 @@ const TimeSeriesChartCore = memo(function TimeSeriesChartCore({
   height,
   data,
   xDataKey,
+  dateLabelKey,
   margin,
   animationDuration,
   animationEasing = DEFAULT_ANIMATION_EASING,
@@ -399,8 +402,11 @@ const TimeSeriesChartCore = memo(function TimeSeriesChartCore({
   );
 
   const dateLabels = useMemo(
-    () => visiblePlotData.map((d) => shortDateFmt.format(xAccessor(d))),
-    [visiblePlotData, xAccessor]
+    () => visiblePlotData.map((d) => {
+      const label = dateLabelKey ? d[dateLabelKey] : undefined;
+      return typeof label === "string" ? label : shortDateFmt.format(xAccessor(d));
+    }),
+    [dateLabelKey, visiblePlotData, xAccessor]
   );
 
   const canInteract = isLoaded && isChartInteractionPhase(chartPhase);

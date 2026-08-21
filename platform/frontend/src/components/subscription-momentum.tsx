@@ -1,6 +1,6 @@
 "use client";
 
-import { curveNatural } from "@visx/curve";
+import { curveMonotoneX } from "@visx/curve";
 import { chartCssVars, defaultScatterColors } from "@/components/charts/chart-context";
 import { Grid } from "@/components/charts/grid";
 import { Line, LineChart } from "@/components/charts/line-chart";
@@ -29,6 +29,37 @@ const categoryColors: Record<string, string> = {
   QIB: defaultScatterColors[3],
 };
 
+const subscriptionDateFormatter = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  timeZone: "Asia/Kolkata",
+});
+
+const subscriptionTimestampFormatter = new Intl.DateTimeFormat("en-IN", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Asia/Kolkata",
+});
+
+const MAX_VISIBLE_CHECKPOINT_GAP_MS = 10 * 60 * 1000;
+
+function compressCheckpointTimes(checkpoints: Array<{ capturedAt: string }>) {
+  let previousActualTime: number | null = null;
+  let compressedTime = Date.UTC(2000, 0, 1);
+
+  return checkpoints.map((checkpoint) => {
+    const actualTime = Date.parse(checkpoint.capturedAt);
+    if (previousActualTime != null) {
+      compressedTime += Math.min(
+        Math.max(actualTime - previousActualTime, 1),
+        MAX_VISIBLE_CHECKPOINT_GAP_MS,
+      );
+    }
+    previousActualTime = actualTime;
+    return compressedTime;
+  });
+}
+
 function quantityLabel(value: number) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
 }
@@ -41,6 +72,12 @@ function volumeLabel(value?: string | null) {
 function changeLabel(value: number) {
   if (Math.abs(value) < 0.005) return "No change";
   return `${value > 0 ? "+" : ""}${quantityLabel(value)}×`;
+}
+
+function multipleLengthClass(label: string) {
+  if (label.length >= 8) return "is-very-long";
+  if (label.length >= 6) return "is-long";
+  return "";
 }
 
 interface SubscriptionMomentumProps {
@@ -81,10 +118,23 @@ export function SubscriptionMomentum({ subscriptions, exchange, scope }: Subscri
 
   if (!checkpoints.length || !categories.length) return null;
 
-  const chartData = checkpoints.map((checkpoint) => ({
-    date: new Date(checkpoint.capturedAt),
-    ...Object.fromEntries(categories.map((category) => [category, checkpoint.values.get(category) ?? 0])),
-  }));
+  const carriedValues = new Map<string, number>();
+  const compressedTimes = compressCheckpointTimes(checkpoints);
+  const chartData = checkpoints.map((checkpoint, index) => {
+    const capturedAt = new Date(checkpoint.capturedAt);
+
+    for (const category of categories) {
+      const value = checkpoint.values.get(category);
+      if (value != null) carriedValues.set(category, value);
+    }
+
+    return {
+      date: new Date(compressedTimes[index] ?? Date.UTC(2000, 0, 1)),
+      capturedAtLabel: subscriptionDateFormatter.format(capturedAt),
+      capturedAtTooltip: subscriptionTimestampFormatter.format(capturedAt),
+      ...Object.fromEntries(categories.map((category) => [category, carriedValues.get(category) ?? 0])),
+    };
+  });
   const latestCheckpoint = checkpoints.at(-1);
   const previousCheckpoint = checkpoints.at(-2);
   const latestItems = new Map(
@@ -95,13 +145,14 @@ export function SubscriptionMomentum({ subscriptions, exchange, scope }: Subscri
   const dataCategories = dataCategoryOrder.filter((category) => latestItems.has(category));
   const overall = latestItems.get("TOTAL");
   const overallMultiple = Number(overall?.calculated_subscription ?? 0);
+  const overallLabel = quantityLabel(overallMultiple);
   const isCovered = overallMultiple >= 1;
 
   return (
     <div className="demand-console" role="group" aria-label="Live subscription dashboard">
       <aside className="demand-score" aria-label="Overall subscription">
         <div className="demand-score-top"><span>Overall book</span><i>Live</i></div>
-        <div className="demand-score-value"><strong>{quantityLabel(overallMultiple)}</strong><span>×</span></div>
+        <div className={`demand-score-value ${multipleLengthClass(overallLabel)}`}><strong>{overallLabel}</strong><span>×</span></div>
         <p className={isCovered ? "is-covered" : undefined}>{isCovered ? "Issue fully covered" : "Building toward full cover"}</p>
         <div className="demand-score-meter" aria-label={`${quantityLabel(overallMultiple)} times subscribed`}><span style={{ width: `${Math.min(overallMultiple * 100, 100)}%` }} /></div>
         <div className="demand-score-scale"><span>0×</span><span>1× threshold</span></div>
@@ -120,12 +171,12 @@ export function SubscriptionMomentum({ subscriptions, exchange, scope }: Subscri
         <div className="demand-chart" aria-label={`${categories.map((category) => categoryLabels[category]).join(", ")} subscription multiples across ${checkpoints.length} stored exchange checkpoints`}>
           <span className="demand-axis-label" aria-hidden="true">Subscription (×)</span>
           <span className="demand-threshold-label" aria-hidden="true">Below 1×</span>
-          <LineChart animationDuration={1100} animationEasing="cubic-bezier(0.5, 1.35, 0.5, 1)" aspectRatio="16 / 8" data={chartData} margin={{ top: 32, right: 28, bottom: 50, left: 28 }} xDataKey="date">
+          <LineChart animationDuration={1100} animationEasing="cubic-bezier(0.5, 1.35, 0.5, 1)" aspectRatio="16 / 8" data={chartData} dateLabelKey="capturedAtLabel" margin={{ top: 32, right: 28, bottom: 50, left: 28 }} xDataKey="date">
             <Grid horizontal stroke="rgba(255,253,247,.18)" strokeDasharray="3,7" />
             <ReferenceArea axisLabelColor="#e9784f" fadeEdges fadeEdgesLength={10} fill="rgba(233,120,79,.12)" fillOpacity={1} pattern="none" patternColor={chartCssVars.foregroundMuted} stroke="rgba(233,120,79,.65)" strokeDasharray="4,4" strokeStyle="dashed" y1={0} y2={1} yAxisId="left" />
-            {categories.map((category) => <Line curve={curveNatural} dataKey={category} fadeEdges key={category} showHighlight={false} stroke={categoryColors[category]} strokeWidth={category === "TOTAL" ? 3.5 : 2.25} />)}
+            {categories.map((category) => <Line curve={curveMonotoneX} dataKey={category} fadeEdges key={category} showHighlight={false} stroke={categoryColors[category]} strokeWidth={category === "TOTAL" ? 3.5 : 2.25} />)}
             <XAxis numTicks={Math.min(5, checkpoints.length)} tickMode="data" />
-            <ChartTooltip showDots={false} indicatorColor="#fffdf7" rows={(point) => categories.map((category) => ({ color: categoryColors[category], label: categoryLabels[category], value: `${quantityLabel(Number(point[category] ?? 0))}×` }))} />
+            <ChartTooltip showDots={false} indicatorColor="#fffdf7" rows={(point) => categories.map((category) => ({ color: categoryColors[category], label: categoryLabels[category], value: `${quantityLabel(Number(point[category] ?? 0))}×` }))} title={(point) => String(point.capturedAtTooltip ?? "Exchange checkpoint")} />
           </LineChart>
         </div>
         {checkpoints.length === 1 && <p className="demand-first-update">The first checkpoint is in. This curve will grow with each exchange update.</p>}
@@ -136,11 +187,12 @@ export function SubscriptionMomentum({ subscriptions, exchange, scope }: Subscri
         {dataCategories.filter((category) => category !== "TOTAL").map((category) => {
           const item = latestItems.get(category);
           const latest = latestCheckpoint?.values.get(category) ?? Number(item?.calculated_subscription ?? 0);
+          const latestLabel = quantityLabel(latest);
           const previous = previousCheckpoint?.values.get(category);
           const change = previous == null ? null : latest - previous;
           return <article className="demand-tape-item" key={category}>
             <header><span>{categoryLabels[category] ?? category}</span><small className={change != null && change > 0 ? "is-up" : undefined}>{change == null ? "Latest" : changeLabel(change)}</small></header>
-            <strong>{quantityLabel(latest)}<i>×</i></strong>
+            <strong className={multipleLengthClass(latestLabel)}>{latestLabel}<i>×</i></strong>
             <dl><div><dt>Bids</dt><dd>{volumeLabel(item?.raw_exchange_bid_quantity)}</dd></div><div><dt>Reserved</dt><dd>{volumeLabel(item?.shares_reserved_for_category)}</dd></div>{item?.applications != null && <div><dt>Applications</dt><dd>{volumeLabel(item.applications)}</dd></div>}</dl>
           </article>;
         })}
