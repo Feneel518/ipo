@@ -14,6 +14,7 @@ from app.lifecycle import (
     effective_lifecycle_expression,
 )
 from app.models import Exchange, ExchangeListing, IngestionRun, Ipo, Lifecycle, Segment
+from app.offer_math import build_lot_applications, build_reservation_summary
 from app.schemas import (
     CalendarEvent,
     IpoCard,
@@ -119,6 +120,7 @@ def ipo_detail(slug: str, db: Annotated[Session, Depends(get_db)]) -> IpoDetail:
             selectinload(Ipo.documents),
             selectinload(Ipo.subscriptions),
             selectinload(Ipo.bid_rules),
+            selectinload(Ipo.reservations),
         )
     )
     if not ipo:
@@ -176,6 +178,10 @@ def ipo_detail(slug: str, db: Annotated[Session, Depends(get_db)]) -> IpoDetail:
             reverse=True,
         ),
         bid_rules=sorted(ipo.bid_rules, key=lambda item: (item.exchange.value, item.category)),
+        reservation_summary=build_reservation_summary(ipo),
+        lot_size_applications=build_lot_applications(
+            ipo, freshest_listing.segment if freshest_listing else None
+        ),
         master_data_last_fetched_at=max(fetched_times, default=None),
         master_data_sources=sorted(
             {

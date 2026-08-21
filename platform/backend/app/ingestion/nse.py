@@ -18,7 +18,7 @@ from app.ingestion.normalize import (
     price_band,
     segment,
 )
-from app.ingestion.types import BidRuleData, NormalizedIssue, Subscription
+from app.ingestion.types import BidRuleData, NormalizedIssue, ReservationData, Subscription
 from app.models import Exchange, Lifecycle, MarketType
 
 BASE = "https://www.nseindia.com"
@@ -54,7 +54,39 @@ def _subscription_category(value: Any) -> str | None:
         return "EMPLOYEE"
     if "SHAREHOLDER" in raw:
         return "SHAREHOLDER"
+    if "MARKET MAKER" in raw:
+        return "MARKET_MAKER"
+    if "INDIVIDUAL INVESTOR" in raw:
+        return "INDIVIDUAL"
     return None
+
+
+def _anchor_reservation(details: dict[str, str]) -> ReservationData | None:
+    issue_size = details.get("Issue Size", "")
+    match = re.search(
+        r"anchor\s+reservation\s+portion\s+of\s+([\d,]+)\s+equity\s+shares",
+        issue_size,
+        flags=re.I,
+    )
+    shares = decimal_value(match.group(1)) if match else None
+    if shares is None:
+        return None
+    anchor_url = next(
+        (
+            value
+            for title, value in details.items()
+            if "ANCHOR ALLOCATION" in title.upper() and value.startswith("http")
+        ),
+        DETAIL,
+    )
+    return ReservationData(
+        category="ANCHOR",
+        parent_category="QIB",
+        shares=shares,
+        source_url=anchor_url,
+        source_type="ANCHOR_NOTICE",
+        is_actual=True,
+    )
 
 
 def _nse_updated_at(value: Any) -> datetime | None:
@@ -246,6 +278,7 @@ class NSEAdapter:
             ):
                 documents.append((title.upper().replace(" ", "_"), title, value))
         issue_price = decimal_value(details.get("Issue Price")) or issue.final_issue_price
+        anchor = _anchor_reservation(details)
         detected_market_type = market_type(
             details.get("Issue Type"), low or issue.price_low, high or issue.price_high
         )
@@ -271,6 +304,7 @@ class NSEAdapter:
                 **{f"{field}_is_estimated": False for field in schedule},
                 "documents": documents,
                 "bid_rules": list(rules.values()),
+                "reservations": [anchor] if anchor else issue.reservations,
                 "detail_raw": payload,
                 "detail_endpoint": DETAIL,
                 "detail_fetched_at": datetime.now(UTC),

@@ -203,6 +203,8 @@ def test_due_logic_and_api_contract_fields():
         "minimum_bid_quantity",
         "minimum_retail_investment",
         "bid_rules",
+        "reservation_summary",
+        "lot_size_applications",
         "master_data_last_fetched_at",
         "allotment_date",
         "allotment_date_is_estimated",

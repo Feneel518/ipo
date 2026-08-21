@@ -32,6 +32,35 @@ class BidRuleOut(BaseModel):
     maximum_subscription_amount: Decimal | None
 
 
+class ReservationOut(BaseModel):
+    category: str
+    parent_category: str | None
+    shares: Decimal
+    percentage_net: Decimal | None
+    percentage_total: Decimal
+    max_allottees: int | None
+    source_url: str
+    source_type: str
+    as_of_date: date | None
+    is_actual: bool
+    is_derived: bool
+
+
+class ReservationSummaryOut(BaseModel):
+    total_issue_shares: Decimal
+    net_offer_shares: Decimal
+    reserved_shares: Decimal
+    rows: list[ReservationOut]
+
+
+class LotApplicationOut(BaseModel):
+    category: str
+    application_kind: str
+    lots: int
+    shares: int
+    amount: Decimal
+
+
 class IpoCard(BaseModel):
     id: int
     company_name: str
@@ -99,6 +128,8 @@ class IpoDetail(IpoCard):
     documents: list[DocumentOut]
     subscriptions: list[SubscriptionOut]
     bid_rules: list[BidRuleOut]
+    reservation_summary: ReservationSummaryOut | None
+    lot_size_applications: list[LotApplicationOut]
     master_data_last_fetched_at: datetime | None
     master_data_sources: list[str]
     last_updated_at: datetime

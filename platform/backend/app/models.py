@@ -91,6 +91,7 @@ class Ipo(Base):
     documents: Mapped[list["IpoDocument"]] = relationship(back_populates="ipo")
     subscriptions: Mapped[list["SubscriptionSnapshot"]] = relationship(back_populates="ipo")
     bid_rules: Mapped[list["BidRule"]] = relationship(back_populates="ipo")
+    reservations: Mapped[list["IpoReservation"]] = relationship(back_populates="ipo")
 
 
 class ExchangeListing(Base):
@@ -140,6 +141,27 @@ class BidRule(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     ipo: Mapped[Ipo] = relationship(back_populates="bid_rules")
+
+
+class IpoReservation(Base):
+    """Latest durable offer allocation reported by an official source."""
+
+    __tablename__ = "ipo_reservations"
+    __table_args__ = (UniqueConstraint("ipo_id", "category"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ipo_id: Mapped[int] = mapped_column(ForeignKey("ipos.id", ondelete="CASCADE"), index=True)
+    category: Mapped[str] = mapped_column(String(40))
+    parent_category: Mapped[str | None] = mapped_column(String(40))
+    shares: Mapped[Decimal] = mapped_column(Numeric(24, 4))
+    source_url: Mapped[str] = mapped_column(Text)
+    source_type: Mapped[str] = mapped_column(String(40))
+    as_of_date: Mapped[date | None] = mapped_column(Date)
+    is_actual: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_derived: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    ipo: Mapped[Ipo] = relationship(back_populates="reservations")
 
 
 class IpoDocument(Base):

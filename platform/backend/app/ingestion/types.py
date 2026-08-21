@@ -26,6 +26,17 @@ class BidRuleData(BaseModel):
     maximum_subscription_amount: Decimal | None = None
 
 
+class ReservationData(BaseModel):
+    category: str
+    shares: Decimal
+    source_url: str
+    source_type: str = "EXCHANGE_CATEGORY"
+    parent_category: str | None = None
+    as_of_date: date | None = None
+    is_actual: bool = True
+    is_derived: bool = False
+
+
 class NormalizedIssue(BaseModel):
     exchange: Exchange
     segment: Segment
@@ -70,6 +81,7 @@ class NormalizedIssue(BaseModel):
     documents: list[tuple[str, str, str]] = Field(default_factory=list)
     subscriptions: list[Subscription] = Field(default_factory=list)
     bid_rules: list[BidRuleData] = Field(default_factory=list)
+    reservations: list[ReservationData] = Field(default_factory=list)
     raw: dict[str, Any]
     detail_raw: dict[str, Any] | None = None
     detail_endpoint: str | None = None

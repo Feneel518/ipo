@@ -16,7 +16,7 @@ from app.config import get_settings
 from app.db import SessionLocal
 from app.ingestion.bse import BSEAdapter
 from app.ingestion.nse import NSEAdapter
-from app.ingestion.types import NormalizedIssue, Subscription
+from app.ingestion.types import NormalizedIssue, ReservationData, Subscription
 from app.models import (
     BidRule,
     Exchange,
@@ -24,6 +24,7 @@ from app.models import (
     IngestionRun,
     Ipo,
     IpoDocument,
+    IpoReservation,
     Lifecycle,
     MarketType,
     SourceRecord,
@@ -164,6 +165,117 @@ def _store_subscription_snapshot(
         )
     )
     return True
+
+
+def _upsert_reservation(db: Session, ipo_id: int, reservation: ReservationData) -> None:
+    row = db.scalar(
+        select(IpoReservation).where(
+            IpoReservation.ipo_id == ipo_id,
+            IpoReservation.category == reservation.category,
+        )
+    )
+    if row is None:
+        row = IpoReservation(
+            ipo_id=ipo_id,
+            category=reservation.category,
+            shares=reservation.shares,
+            source_url=reservation.source_url,
+            source_type=reservation.source_type,
+        )
+        db.add(row)
+    _set_if_present(
+        row,
+        {
+            "parent_category": reservation.parent_category,
+            "shares": reservation.shares,
+            "source_url": reservation.source_url,
+            "source_type": reservation.source_type,
+            "as_of_date": reservation.as_of_date,
+            "is_actual": reservation.is_actual,
+            "is_derived": reservation.is_derived,
+        },
+    )
+
+
+def _sync_reservations(db: Session, ipo_id: int, issue: NormalizedIssue) -> None:
+    """Promote ephemeral offered/reserved figures into durable offer master data."""
+    explicit = {item.category: item for item in issue.reservations}
+    for reservation in explicit.values():
+        _upsert_reservation(db, ipo_id, reservation)
+
+    anchor = explicit.get("ANCHOR")
+    if anchor is None:
+        stored_anchor = db.scalar(
+            select(IpoReservation).where(
+                IpoReservation.ipo_id == ipo_id,
+                IpoReservation.category == "ANCHOR",
+            )
+        )
+        if stored_anchor is not None:
+            anchor = ReservationData(
+                category="ANCHOR",
+                parent_category="QIB",
+                shares=stored_anchor.shares,
+                source_url=stored_anchor.source_url,
+                source_type=stored_anchor.source_type,
+                as_of_date=stored_anchor.as_of_date,
+                is_actual=stored_anchor.is_actual,
+                is_derived=stored_anchor.is_derived,
+            )
+
+    eligible = {
+        "QIB",
+        "NII",
+        "BNII",
+        "SNII",
+        "RETAIL",
+        "INDIVIDUAL",
+        "EMPLOYEE",
+        "SHAREHOLDER",
+        "MARKET_MAKER",
+    }
+    reported: dict[str, ReservationData] = {}
+    for subscription in issue.subscriptions:
+        if (
+            subscription.category not in eligible
+            or subscription.shares_reserved_for_category is None
+            or subscription.shares_reserved_for_category <= 0
+        ):
+            continue
+        category = subscription.category
+        if category == "QIB" and anchor is not None:
+            category = "QIB_EX_ANCHOR"
+        parent = "QIB" if category in {"ANCHOR", "QIB_EX_ANCHOR"} else None
+        if category in {"BNII", "SNII"}:
+            parent = "NII"
+        captured = subscription.captured_at
+        reported[category] = ReservationData(
+            category=category,
+            parent_category=parent,
+            shares=subscription.shares_reserved_for_category,
+            source_url=subscription.source,
+            source_type="EXCHANGE_CATEGORY",
+            as_of_date=captured.astimezone(IST).date() if captured else None,
+            is_actual=True,
+        )
+    for reservation in reported.values():
+        _upsert_reservation(db, ipo_id, reservation)
+
+    qib_ex_anchor = reported.get("QIB_EX_ANCHOR")
+    if anchor is not None and qib_ex_anchor is not None:
+        _upsert_reservation(
+            db,
+            ipo_id,
+            ReservationData(
+                category="QIB",
+                shares=anchor.shares + qib_ex_anchor.shares,
+                source_url=qib_ex_anchor.source_url,
+                source_type="DERIVED_FROM_EXCHANGE",
+                as_of_date=qib_ex_anchor.as_of_date,
+                is_actual=True,
+                is_derived=True,
+            ),
+        )
 
 
 def _snapshot(issues: list[NormalizedIssue], exchange: Exchange) -> str | None:
@@ -368,6 +480,7 @@ def _upsert_issue(
     observed = datetime.now(UTC)
     for subscription in issue.subscriptions:
         _store_subscription_snapshot(db, ipo.id, issue.exchange, subscription, observed)
+    _sync_reservations(db, ipo.id, issue)
 
     for bid_rule in issue.bid_rules:
         existing_rule = db.scalar(
