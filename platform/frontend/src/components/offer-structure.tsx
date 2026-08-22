@@ -15,6 +15,17 @@ const categoryLabels: Record<string, string> = {
   MARKET_MAKER: "Market maker reservation",
 };
 
+const categoryHints: Record<string, string> = {
+  RETAIL: "Applications up to ₹2 lakh",
+  INDIVIDUAL: "Applications up to ₹2 lakh",
+  NII: "Applications above ₹2 lakh",
+  BNII: "Large HNI applications",
+  SNII: "Small HNI applications",
+};
+
+const investorCategories = new Set(["RETAIL", "INDIVIDUAL", "NII", "BNII", "SNII"]);
+const institutionalCategories = new Set(["QIB", "ANCHOR", "QIB_EX_ANCHOR"]);
+
 function percent(value: string | null) {
   if (value == null) return "—";
   return `${new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value))}%`;
@@ -43,9 +54,7 @@ export function OfferStructure({ ipo, latestSubscriptions = [] }: { ipo: IpoDeta
 
   const reservationSource = summary?.rows.find((row) => row.source_url)?.source_url;
   const subscriptionRows = new Map(latestSubscriptions.map((row) => [row.category, row]));
-  const showAllotmentEstimate = ipo.lifecycle === "OPEN" && Boolean(
-    summary?.rows.some((row) => row.max_allottees != null),
-  );
+  const showAllotmentEstimate = ipo.lifecycle === "OPEN" && Boolean(summary?.rows.some((row) => row.max_allottees != null));
   const allocationRows = summary?.rows.map((row) => {
     const subscription = categorySubscription(subscriptionRows, row.category);
     const applicationCount = Number(subscription?.applications);
@@ -54,72 +63,108 @@ export function OfferStructure({ ipo, latestSubscriptions = [] }: { ipo: IpoDeta
     const hasSubscriptionMultiple = Number.isFinite(subscriptionMultiple) && subscriptionMultiple > 0;
     const chanceSource = hasApplicationCount ? "applications" : hasSubscriptionMultiple ? "minimum-lot" : null;
     const chance = row.max_allottees != null && chanceSource
-      ? Math.min(100, chanceSource === "applications"
-        ? row.max_allottees / applicationCount * 100
-        : 100 / subscriptionMultiple)
+      ? Math.min(100, chanceSource === "applications" ? row.max_allottees / applicationCount * 100 : 100 / subscriptionMultiple)
       : null;
     const odds = chance != null && chance < 100 && row.max_allottees
-      ? Math.max(2, Math.round(chanceSource === "applications"
-        ? applicationCount / row.max_allottees
-        : subscriptionMultiple))
+      ? Math.max(2, Math.round(chanceSource === "applications" ? applicationCount / row.max_allottees : subscriptionMultiple))
       : null;
 
     return { ...row, chance, chanceSource, odds };
   }) ?? [];
+  const investorRows = allocationRows.filter((row) => investorCategories.has(row.category));
+  const institutionalRows = allocationRows.filter((row) => institutionalCategories.has(row.category));
+  const specialRows = allocationRows.filter((row) => !investorCategories.has(row.category) && !institutionalCategories.has(row.category));
 
   return (
     <section className="offer-structure" aria-labelledby="offer-structure-title">
       <header className="offer-structure-heading">
         <div>
-          <p className="overline">Application map</p>
-          <h2 id="offer-structure-title">How the shares<br /><em>are split.</em></h2>
+          <p className="overline">Application field guide</p>
+          <h2 id="offer-structure-title">One issue.<br /><em>Your way in.</em></h2>
         </div>
-        <p>Read the offer category by category—how many shares sit in each pool, who can access them, and the live allotment odds where they can be estimated.</p>
+        <p>Find the investor category that fits your bid, understand the shares set aside for it, then choose a valid application size.</p>
       </header>
 
-      {summary && <div className="reservation-panel">
-        <div className="allocation-snapshot" aria-label="Issue reservation summary">
-          <div className="allocation-snapshot-primary"><span>Issue inventory</span><strong>{quantity(summary.total_issue_shares)}</strong><small>Total shares on offer</small></div>
-          <div><span>Public book</span><strong>{quantity(summary.net_offer_shares)}</strong><small>Net offer shares</small></div>
-          <div><span>Special pools</span><strong>{quantity(summary.reserved_shares)}</strong><small>Reserved shares</small></div>
-        </div>
-        <div className="allocation-ledger" role="list" aria-label="Investor category allocation">
-          {allocationRows.map((row, index) => <article className={`allocation-row${row.parent_category ? " is-child" : ""}`} role="listitem" key={row.category}>
-            <span className="allocation-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-            <header className="allocation-identity">
-              <small>{row.parent_category ? `Inside ${categoryLabel(row.parent_category)}` : "Investor allocation"}</small>
-              <h3>{categoryLabel(row.category)}</h3>
-              {row.is_derived && <span>Derived allocation</span>}
-            </header>
-            <dl className="allocation-facts">
-              <div><dt>Shares in pool</dt><dd>{quantity(row.shares)}</dd></div>
-              <div><dt>Maximum allottees</dt><dd>{row.max_allottees == null ? "Not applicable" : row.max_allottees.toLocaleString("en-IN")}</dd></div>
-            </dl>
-            {showAllotmentEstimate && <div className={`allocation-odds${row.max_allottees == null ? " is-muted" : row.chance != null && row.chance >= 100 ? " is-likely" : ""}`}>
-              <span>Live allotment estimate</span>
-              {row.max_allottees == null ? <><strong>Different method</strong><small>No lottery-style estimate</small></> : row.chance == null ? <><strong>Unavailable</strong><small>Waiting for bid data</small></> : row.chance >= 100 ? <><strong>Likely</strong><small>Subject to a valid bid</small></> : <><strong>{chanceLabel(row.chance)}</strong><small>About 1 in {row.odds}{row.chanceSource === "minimum-lot" ? " · bid-based" : ""}</small></>}
-            </div>}
-            <div className="allocation-share">
-              <div className="allocation-meter" aria-hidden="true"><span style={{ width: `${Math.min(100, Number(row.percentage_total))}%` }} /></div>
-              <dl><div><dt>Of net offer</dt><dd>{percent(row.percentage_net)}</dd></div><div><dt>Of total issue</dt><dd>{percent(row.percentage_total)}</dd></div></dl>
-            </div>
-          </article>)}
-        </div>
-        <footer><span>{showAllotmentEstimate ? "Uses live application counts when reported; otherwise 100 ÷ subscription on a minimum-lot basis. Preliminary, not guaranteed." : "Percentages are calculated from stored share quantities."}</span>{reservationSource && <a href={reservationSource} target="_blank" rel="noreferrer">Official source ↗</a>}</footer>
-      </div>}
+      <div className="application-desk">
+        {summary && <article className="allocation-map" aria-labelledby="allocation-map-title">
+          <header className="desk-heading">
+            <span className="desk-step">01</span>
+            <div><p>Choose your lane</p><h3 id="allocation-map-title">Shares reserved for you</h3></div>
+          </header>
 
-      {applications.length > 0 && <div className="lot-panel">
-        <header className="lot-panel-heading"><div><span>Application ladder</span><h3>Build your bid.</h3><p>From the smallest valid order to each category ceiling.</p></div><div className="lot-price"><span>Calculation price</span><strong>{money(ipo.final_issue_price ?? ipo.price_high)}</strong><small>{ipo.final_issue_price ? "Final price" : "Upper price band"} · per share</small></div></header>
-        <div className="lot-ladder" role="list" aria-label="Minimum and maximum IPO applications">
-          {applications.map((row, index) => <article className="lot-card" role="listitem" key={`${row.category}-${row.application_kind}`}>
-            <header><span>{String(index + 1).padStart(2, "0")}</span><small>{row.application_kind === "MIN" ? "Entry bid" : "Category ceiling"}</small></header>
-            <div className="lot-card-category"><span>{categoryLabel(row.category)}</span><b>{row.application_kind === "MIN" ? "Minimum" : "Maximum"}</b></div>
-            <strong className="lot-card-amount">{money(row.amount)}</strong>
-            <dl><div><dt>Lots</dt><dd>{row.lots.toLocaleString("en-IN")}</dd></div><div><dt>Shares</dt><dd>{row.shares.toLocaleString("en-IN")}</dd></div></dl>
-          </article>)}
-        </div>
-        {ipo.platform === "SME" && <p className="lot-rule-note">SME application size follows the minimum order quantity reported by the exchange; mainboard retail/HNI thresholds are not applied.</p>}
-      </div>}
+          <dl className="issue-totals" aria-label="Issue reservation summary">
+            <div className="issue-total-primary"><dt>Total issue</dt><dd>{quantity(summary.total_issue_shares)}</dd></div>
+            <div><dt>Public book</dt><dd>{quantity(summary.net_offer_shares)}</dd></div>
+            <div><dt>Reserved</dt><dd>{quantity(summary.reserved_shares)}</dd></div>
+          </dl>
+
+          {investorRows.length > 0 && <div className="investor-lanes" role="list" aria-label="Investor allocation categories">
+            {investorRows.map((row, index) => {
+              const share = row.percentage_net ?? row.percentage_total;
+              return <article className="investor-lane" role="listitem" key={row.category}>
+                <div className="lane-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</div>
+                <div className="lane-main">
+                  <header>
+                    <div><p>{categoryHints[row.category] ?? "Individual investor pool"}</p><h4>{categoryLabel(row.category)}</h4></div>
+                    {row.is_derived && <span>Derived</span>}
+                  </header>
+                  <div className="lane-track" aria-hidden="true"><span style={{ width: `${Math.min(100, Number(share))}%` }} /></div>
+                  <dl className="lane-facts">
+                    <div><dt>Pool size</dt><dd>{quantity(row.shares)}</dd></div>
+                    <div><dt>Possible allottees</dt><dd>{row.max_allottees == null ? "Not reported" : row.max_allottees.toLocaleString("en-IN")}</dd></div>
+                  </dl>
+                </div>
+                <div className="lane-share"><strong>{percent(share)}</strong><span>{row.percentage_net == null ? "issue allocation" : "public-book allocation"}</span></div>
+                {showAllotmentEstimate && row.max_allottees != null && <div className={`lane-chance${row.chance == null ? " is-waiting" : ""}`}>
+                  <span>Live allotment estimate</span>
+                  <strong>{row.chance == null ? "Waiting" : chanceLabel(row.chance)}</strong>
+                  <small>{row.chance == null ? "Updates when bids arrive" : row.chance >= 100 ? "Likely with a valid bid" : `About 1 in ${row.odds}${row.chanceSource === "minimum-lot" ? " · bid-based" : ""}`}</small>
+                </div>}
+              </article>;
+            })}
+          </div>}
+
+          {(institutionalRows.length > 0 || specialRows.length > 0) && <details className="market-context">
+            <summary><span>See the rest of the issue</span><small>Institutional &amp; special pools</small></summary>
+            <div className="context-rows" role="list">
+              {[...institutionalRows, ...specialRows].map((row) => <div role="listitem" key={row.category}>
+                <p><strong>{categoryLabel(row.category)}</strong>{row.parent_category && <small>Inside {categoryLabel(row.parent_category)}</small>}</p>
+                <span>{quantity(row.shares)}</span>
+                <b>{percent(row.percentage_net ?? row.percentage_total)}</b>
+              </div>)}
+            </div>
+          </details>}
+
+          <footer className="allocation-method"><span>{showAllotmentEstimate ? "Probability = possible allottees ÷ valid applications × 100. If application counts are unavailable, we use 100 ÷ the subscription multiple, assuming minimum-lot bids. Estimates are indicative." : "Allocation percentages show the portion of reported shares reserved for each category; they are not subscription multiples."}</span>{reservationSource && <a href={reservationSource} target="_blank" rel="noreferrer">Verify at source ↗</a>}</footer>
+        </article>}
+
+        {applications.length > 0 && <aside className="bid-ticket" aria-labelledby="bid-ticket-title">
+          <header className="desk-heading bid-ticket-heading">
+            <span className="desk-step">02</span>
+            <div><p>Choose your bid</p><h3 id="bid-ticket-title">Valid application sizes</h3></div>
+          </header>
+
+          <div className="ticket-price">
+            <span>Calculated at</span>
+            <strong>{money(ipo.final_issue_price ?? ipo.price_high)}</strong>
+            <small>{ipo.final_issue_price ? "Final issue price" : "Upper price band"} · per share</small>
+          </div>
+
+          <div className="ticket-options" role="list" aria-label="Minimum and maximum IPO applications">
+            {applications.map((row, index) => <article className={`ticket-option ${row.application_kind === "MIN" ? "is-entry" : "is-ceiling"}`} role="listitem" key={`${row.category}-${row.application_kind}`}>
+              <span className="ticket-marker" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+              <div className="ticket-option-copy">
+                <p>{categoryLabel(row.category)}</p>
+                <span>{row.application_kind === "MIN" ? "Entry application" : "Category ceiling"}</span>
+              </div>
+              <strong className="ticket-amount">{money(row.amount)}</strong>
+              <dl><div><dt>Lots</dt><dd>{row.lots.toLocaleString("en-IN")}</dd></div><div><dt>Shares</dt><dd>{row.shares.toLocaleString("en-IN")}</dd></div></dl>
+            </article>)}
+          </div>
+
+          <footer className="ticket-note">Amounts are indicative and exclude any blocked-funds variation.{ipo.platform === "SME" && " SME sizing follows the exchange-reported minimum order quantity."}</footer>
+        </aside>}
+      </div>
     </section>
   );
 }
