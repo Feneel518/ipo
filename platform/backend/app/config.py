@@ -11,6 +11,16 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://ipodekho:ipodekho@localhost:5432/ipodekho"
     cors_origins: str = "http://localhost:3000"
     raw_snapshot_bucket: str | None = None
+    r2_bucket: str | None = None
+    r2_endpoint_url: str | None = None
+    r2_access_key_id: str | None = None
+    r2_secret_access_key: str | None = None
+    rhp_allowed_hosts: str = "nseindia.com,bseindia.com"
+    rhp_download_max_bytes: int = 200 * 1024 * 1024
+    rhp_download_connect_timeout_seconds: float = 10
+    rhp_download_read_timeout_seconds: float = 60
+    rhp_max_redirects: int = 5
+    rhp_archive_batch_size: int = 10
     revalidation_url: str | None = None
     revalidation_secret: str | None = None
     internal_api_token: str = Field(default="change-me", min_length=8)
@@ -30,6 +40,32 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+
+    @property
+    def rhp_allowed_host_list(self) -> list[str]:
+        return [item.strip().lower() for item in self.rhp_allowed_hosts.split(",") if item.strip()]
+
+    @property
+    def r2_configured(self) -> bool:
+        return all(
+            (
+                self.r2_bucket,
+                self.r2_endpoint_url,
+                self.r2_access_key_id,
+                self.r2_secret_access_key,
+            )
+        )
+
+    @property
+    def r2_configuration_requested(self) -> bool:
+        return any(
+            (
+                self.r2_bucket,
+                self.r2_endpoint_url,
+                self.r2_access_key_id,
+                self.r2_secret_access_key,
+            )
+        )
 
 
 @lru_cache

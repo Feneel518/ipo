@@ -54,6 +54,13 @@ Copy the corresponding `.env.example` file before starting each service.
 - A source returning fewer than `SOURCE_MINIMUM_ROWS` fails validation and cannot erase data.
 - Missing listings are only marked stale after three successful omissions; they are never automatically deleted.
 - When configured, raw batches are gzip-compressed into `RAW_SNAPSHOT_BUCKET`.
+- When all `R2_*` variables are configured, RHPs for upcoming and open IPOs are validated and
+  copied to Cloudflare R2 after exchange data commits. Archive failures are tracked per document and do not
+  roll back IPO ingestion.
+- After Gemini extraction data commits successfully, its worker must call the R2 cleanup operation,
+  which deletes the source PDF and retains only its hash and storage timestamps for auditability.
+- Exchange ZIP responses are temporary transport only. The archive stores the extracted,
+  signature-verified PDF and never the ZIP.
 - One exchange can fail without rolling back fresh data from the other, but the job exits unsuccessfully to trigger monitoring.
 
 ## Data-use note

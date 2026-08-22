@@ -16,6 +16,7 @@ from app.config import get_settings
 from app.db import SessionLocal
 from app.ingestion.bse import BSEAdapter
 from app.ingestion.nse import NSEAdapter
+from app.ingestion.rhp_storage import archive_pending_rhps, should_archive_rhp
 from app.ingestion.types import NormalizedIssue, ReservationData, Subscription
 from app.models import (
     BidRule,
@@ -467,15 +468,26 @@ def _upsert_issue(
             )
 
     for kind, title, url in issue.documents:
-        exists = db.scalar(
-            select(IpoDocument.id).where(
+        document = db.scalar(
+            select(IpoDocument).where(
                 IpoDocument.ipo_id == ipo.id,
                 IpoDocument.document_type == kind,
                 IpoDocument.url == url,
             )
         )
-        if not exists:
-            db.add(IpoDocument(ipo_id=ipo.id, document_type=kind, title=title, url=url))
+        archive_rhp = should_archive_rhp(issue.lifecycle, kind, title)
+        if document is None:
+            db.add(
+                IpoDocument(
+                    ipo_id=ipo.id,
+                    document_type=kind,
+                    title=title,
+                    url=url,
+                    storage_status="PENDING" if archive_rhp else "NOT_APPLICABLE",
+                )
+            )
+        elif archive_rhp and document.storage_status == "NOT_APPLICABLE":
+            document.storage_status = "PENDING"
 
     observed = datetime.now(UTC)
     for subscription in issue.subscriptions:
@@ -694,6 +706,18 @@ async def run_ingestion(year: int | None = None) -> bool:
             results = []
             for adapter in (NSEAdapter(), BSEAdapter()):
                 results.append(await ingest_exchange(adapter, selected_year))
+            if any(results):
+                try:
+                    stored, failed = await archive_pending_rhps()
+                    if stored or failed:
+                        logger.info(
+                            "rhp_archive_batch_finished",
+                            extra={"stored": stored, "failed": failed},
+                        )
+                except Exception:
+                    # Exchange data is already committed. An R2/configuration
+                    # failure must remain visible without rolling ingestion back.
+                    logger.exception("rhp_archive_batch_failed")
             if any(results):
                 try:
                     await _revalidate()

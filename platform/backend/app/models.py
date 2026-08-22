@@ -172,6 +172,17 @@ class IpoDocument(Base):
     document_type: Mapped[str] = mapped_column(String(40))
     title: Mapped[str] = mapped_column(String(250))
     url: Mapped[str] = mapped_column(Text)
+    storage_status: Mapped[str] = mapped_column(String(30), default="NOT_APPLICABLE", index=True)
+    storage_key: Mapped[str | None] = mapped_column(Text)
+    content_sha256: Mapped[str | None] = mapped_column(String(64), index=True)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    source_content_type: Mapped[str | None] = mapped_column(String(200))
+    final_source_url: Mapped[str | None] = mapped_column(Text)
+    storage_attempts: Mapped[int] = mapped_column(default=0)
+    storage_error: Mapped[str | None] = mapped_column(Text)
+    storage_attempted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    stored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    storage_deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ipo: Mapped[Ipo] = relationship(back_populates="documents")
 
 

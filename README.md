@@ -49,6 +49,28 @@ Create a second service from the same repository and set:
 
 Use the same `DATABASE_URL`, `ENVIRONMENT`, `REVALIDATION_URL`, and `REVALIDATION_SECRET` variables. It runs `ipo-ingest` every five minutes; the application itself skips detail requests until each IPO is due for refresh.
 
+To archive RHPs for upcoming and open IPOs, add these variables to the ingestion cron service (the API service
+does not need the R2 credentials):
+
+```dotenv
+R2_BUCKET=ipo
+R2_ENDPOINT_URL=https://YOUR_CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=YOUR_R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY=YOUR_R2_SECRET_ACCESS_KEY
+RHP_ALLOWED_HOSTS=nseindia.com,bseindia.com
+```
+
+Create an R2 S3 API token with **Object Read & Write** access scoped only to the `ipo` bucket.
+Keep the bucket private: the current website continues to link to the official exchange URL, while
+R2 holds the temporary canonical copy for backend processing. After a Gemini extraction is
+successfully committed to the database, its worker must call the R2 cleanup operation. No CORS
+rule, public `r2.dev` URL, custom
+domain, or Worker is required for this ingestion stage.
+
+The ingestion job accepts either a direct PDF or a ZIP used by an exchange as transport. For ZIP
+responses it extracts one RHP PDF into a temporary file, uploads only that PDF, and removes both
+temporary files. R2 keys use `rhp/{year}/{ipo_id}/{sha256}.pdf`; ZIP files are never stored.
+
 ### Vercel
 
 Import this GitHub repository as a Vercel project and set its Root Directory to `platform/frontend`. Set the following variables for Production and Preview:
@@ -60,4 +82,3 @@ REVALIDATION_SECRET=USE_THE_SAME_RANDOM_VALUE_AS_RAILWAY
 ```
 
 After the first Vercel deployment, replace `YOUR_VERCEL_DOMAIN` in Railway's variables with the real production URL and redeploy the Railway services. Preview deployments use the production API through server-side requests; add a preview origin to `CORS_ORIGINS` only if browser-side API calls are introduced later.
-
