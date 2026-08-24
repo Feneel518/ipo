@@ -39,6 +39,8 @@ class ReservationOut(BaseModel):
     percentage_net: Decimal | None
     percentage_total: Decimal
     max_allottees: int | None
+    minimum_bid_quantity: int | None
+    minimum_allotment_quantity: int | None
     source_url: str
     source_type: str
     as_of_date: date | None

@@ -63,25 +63,25 @@ def test_mainboard_lot_applications_match_thresholds():
     assert rows[-1]["amount"] == Decimal("1003124")
 
 
-def test_sme_uses_exchange_minimum_order_instead_of_mainboard_buckets():
+def test_sme_uses_exchange_minimum_order_and_post_2025_nii_buckets():
     ipo = augmont_style_ipo()
     ipo.lot_size = 2000
     ipo.minimum_bid_quantity = 4000
     ipo.price_high = Decimal("60")
 
-    assert build_lot_applications(ipo, Segment.SME) == [
-        {
-            "category": "INDIVIDUAL",
-            "application_kind": "MIN",
-            "lots": 2,
-            "shares": 4000,
-            "amount": Decimal("240000"),
-        }
+    rows = build_lot_applications(ipo, Segment.SME)
+
+    assert [(row["category"], row["application_kind"], row["lots"]) for row in rows] == [
+        ("INDIVIDUAL", "MIN", 2),
+        ("SNII", "MIN", 3),
+        ("SNII", "MAX", 8),
+        ("BNII", "MIN", 9),
     ]
+    assert rows[0]["amount"] == Decimal("240000")
 
 
 def test_reservation_summary_computes_totals_percentages_and_allottees():
-    summary = build_reservation_summary(augmont_style_ipo())
+    summary = build_reservation_summary(augmont_style_ipo(), Segment.MAINBOARD)
     assert summary is not None
     assert summary["net_offer_shares"] == Decimal("10418782")
     assert summary["total_issue_shares"] == Decimal("10469541")
@@ -91,7 +91,35 @@ def test_reservation_summary_computes_totals_percentages_and_allottees():
     assert rows["EMPLOYEE"]["percentage_net"] is None
     assert rows["RETAIL"]["max_allottees"] == 191925
     assert rows["SNII"]["max_allottees"] == 1958
-    assert rows["BNII"]["max_allottees"] == 818
+    assert rows["BNII"]["max_allottees"] == 3916
+    assert rows["BNII"]["minimum_bid_quantity"] == 1273
+    assert rows["BNII"]["minimum_allotment_quantity"] == 266
+
+
+def test_sme_reservation_uses_exchange_reported_minimum_order():
+    ipo = augmont_style_ipo()
+    ipo.lot_size = 2000
+    ipo.minimum_bid_quantity = 4000
+    ipo.price_high = Decimal("60")
+    ipo.reservations = [
+        reservation("INDIVIDUAL", "120000"),
+        reservation("SNII", "60000", "NII"),
+        reservation("BNII", "120000", "NII"),
+    ]
+
+    summary = build_reservation_summary(ipo, Segment.SME)
+
+    assert summary is not None
+    rows = {row["category"]: row for row in summary["rows"]}
+    assert rows["INDIVIDUAL"]["minimum_bid_quantity"] == 4000
+    assert rows["INDIVIDUAL"]["minimum_allotment_quantity"] == 4000
+    assert rows["INDIVIDUAL"]["max_allottees"] == 30
+    assert rows["SNII"]["minimum_bid_quantity"] == 6000
+    assert rows["SNII"]["minimum_allotment_quantity"] == 6000
+    assert rows["SNII"]["max_allottees"] == 10
+    assert rows["BNII"]["minimum_bid_quantity"] == 18000
+    assert rows["BNII"]["minimum_allotment_quantity"] == 6000
+    assert rows["BNII"]["max_allottees"] == 20
 
 
 def test_anchor_shares_are_extracted_from_nse_issue_details():

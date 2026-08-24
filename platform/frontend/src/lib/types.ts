@@ -34,6 +34,8 @@ export interface ReservationRow {
   percentage_net: string | null;
   percentage_total: string;
   max_allottees: number | null;
+  minimum_bid_quantity: number | null;
+  minimum_allotment_quantity: number | null;
   source_url: string;
   source_type: string;
   as_of_date: string | null;
