@@ -178,7 +178,9 @@ def ipo_detail(slug: str, db: Annotated[Session, Depends(get_db)]) -> IpoDetail:
             reverse=True,
         ),
         bid_rules=sorted(ipo.bid_rules, key=lambda item: (item.exchange.value, item.category)),
-        reservation_summary=build_reservation_summary(ipo),
+        reservation_summary=build_reservation_summary(
+            ipo, freshest_listing.segment if freshest_listing else None
+        ),
         lot_size_applications=build_lot_applications(
             ipo, freshest_listing.segment if freshest_listing else None
         ),

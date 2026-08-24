@@ -17,7 +17,7 @@ const categoryLabels: Record<string, string> = {
 
 const categoryHints: Record<string, string> = {
   RETAIL: "Applications up to ₹2 lakh",
-  INDIVIDUAL: "Applications up to ₹2 lakh",
+  INDIVIDUAL: "SME individual application",
   NII: "Applications above ₹2 lakh",
   BNII: "Large HNI applications",
   SNII: "Small HNI applications",
@@ -36,9 +36,14 @@ function categoryLabel(value: string) {
 }
 
 function chanceLabel(value: number) {
-  if (value < 0.1) return "<0.1%";
+  if (value < 0.01) return `${value.toPrecision(1)}%`;
+  if (value < 0.1) return `${value.toFixed(2)}%`;
   if (value < 10) return `${value.toFixed(1)}%`;
   return `${Math.round(value)}%`;
+}
+
+function oddsLabel(value: number) {
+  return value < 2 ? value.toFixed(1) : Math.round(value).toLocaleString("en-IN");
 }
 
 function categorySubscription(rows: Map<string, Subscription>, category: string) {
@@ -59,14 +64,32 @@ export function OfferStructure({ ipo, latestSubscriptions = [] }: { ipo: IpoDeta
     const subscription = categorySubscription(subscriptionRows, row.category);
     const applicationCount = Number(subscription?.applications);
     const hasApplicationCount = Number.isFinite(applicationCount) && applicationCount > 0;
+    const rawBidQuantity = Number(subscription?.raw_exchange_bid_quantity);
+    const hasRawBidQuantity = Number.isFinite(rawBidQuantity) && rawBidQuantity > 0;
     const subscriptionMultiple = Number(subscription?.calculated_subscription);
     const hasSubscriptionMultiple = Number.isFinite(subscriptionMultiple) && subscriptionMultiple > 0;
-    const chanceSource = hasApplicationCount ? "applications" : hasSubscriptionMultiple ? "minimum-lot" : null;
+    const minimumBidQuantity = Number(row.minimum_bid_quantity);
+    const hasMinimumBidQuantity = Number.isFinite(minimumBidQuantity) && minimumBidQuantity > 0;
+    const maximumApplicationCountRaw = hasMinimumBidQuantity
+      ? hasRawBidQuantity
+        ? rawBidQuantity / minimumBidQuantity
+        : hasSubscriptionMultiple
+          ? Number(row.shares) * subscriptionMultiple / minimumBidQuantity
+          : null
+      : null;
+    const maximumApplicationCount = maximumApplicationCountRaw != null
+      ? Math.floor(maximumApplicationCountRaw)
+      : null;
+    const chanceSource = hasApplicationCount
+      ? "applications"
+      : maximumApplicationCount != null && maximumApplicationCount > 0
+        ? "bid-volume-floor"
+        : null;
     const chance = row.max_allottees != null && chanceSource
-      ? Math.min(100, chanceSource === "applications" ? row.max_allottees / applicationCount * 100 : 100 / subscriptionMultiple)
+      ? Math.min(100, row.max_allottees / (chanceSource === "applications" ? applicationCount : maximumApplicationCount!) * 100)
       : null;
     const odds = chance != null && chance < 100 && row.max_allottees
-      ? Math.max(2, Math.round(chanceSource === "applications" ? applicationCount / row.max_allottees : subscriptionMultiple))
+      ? (chanceSource === "applications" ? applicationCount : maximumApplicationCount!) / row.max_allottees
       : null;
 
     return { ...row, chance, chanceSource, odds };
@@ -117,8 +140,8 @@ export function OfferStructure({ ipo, latestSubscriptions = [] }: { ipo: IpoDeta
                 <div className="lane-share"><strong>{percent(share)}</strong><span>{row.percentage_net == null ? "issue allocation" : "public-book allocation"}</span></div>
                 {showAllotmentEstimate && row.max_allottees != null && <div className={`lane-chance${row.chance == null ? " is-waiting" : ""}`}>
                   <span>Live allotment estimate</span>
-                  <strong>{row.chance == null ? "Waiting" : chanceLabel(row.chance)}</strong>
-                  <small>{row.chance == null ? "Updates when bids arrive" : row.chance >= 100 ? "Likely with a valid bid" : `About 1 in ${row.odds}${row.chanceSource === "minimum-lot" ? " · bid-based" : ""}`}</small>
+                  <strong>{row.chance == null ? "Waiting" : `${row.chanceSource === "bid-volume-floor" ? "At least " : ""}${chanceLabel(row.chance)}`}</strong>
+                  <small>{row.chance == null ? "Updates when bids arrive" : row.chance >= 100 ? "Likely with a valid bid" : `${row.chanceSource === "bid-volume-floor" ? "Conservative floor" : "Application-count estimate"} · about 1 in ${oddsLabel(row.odds!)}`}</small>
                 </div>}
               </article>;
             })}
@@ -135,7 +158,7 @@ export function OfferStructure({ ipo, latestSubscriptions = [] }: { ipo: IpoDeta
             </div>
           </details>}
 
-          <footer className="allocation-method"><span>{showAllotmentEstimate ? "Probability = possible allottees ÷ valid applications × 100. If application counts are unavailable, we use 100 ÷ the subscription multiple, assuming minimum-lot bids. Estimates are indicative." : "Allocation percentages show the portion of reported shares reserved for each category; they are not subscription multiples."}</span>{reservationSource && <a href={reservationSource} target="_blank" rel="noreferrer">Verify at source ↗</a>}</footer>
+          <footer className="allocation-method"><span>{showAllotmentEstimate ? "Estimate = possible allottees ÷ applications. When the exchange omits application counts, the displayed floor assumes every bid used that category's minimum bid size. Minimum bid and minimum allotment can differ, especially for bNII. Final odds depend on valid applications and the basis of allotment." : "Allocation percentages show the portion of reported shares reserved for each category; they are not subscription multiples."}</span>{reservationSource && <a href={reservationSource} target="_blank" rel="noreferrer">Verify at source ↗</a>}</footer>
         </article>}
 
         {applications.length > 0 && <aside className="bid-ticket" aria-labelledby="bid-ticket-title">
