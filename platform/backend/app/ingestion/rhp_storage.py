@@ -13,13 +13,21 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import httpx
-from sqlalchemy import exists, or_, select
+from sqlalchemy import exists, or_, select, true
 from sqlalchemy.orm import selectinload
 
 from app.config import Settings, get_settings
 from app.db import SessionLocal
 from app.lifecycle import effective_lifecycle_expression
-from app.models import Exchange, ExchangeListing, IpoDocument, Lifecycle
+from app.models import Exchange, ExchangeListing, IpoDocument, Lifecycle, RhpProcessingFile
+from app.services.rhp.inspector import (
+    PdfInspection,
+    PdfInspectionError,
+    PdfProcessingDecision,
+    choose_pdf_processing_path,
+    inspect_pdf,
+)
+from app.services.rhp.preparer import PdfPreparationError, PreparedPdf, prepare_pdf_for_gemini
 
 logger = logging.getLogger(__name__)
 PDF_SIGNATURE = b"%PDF-"
@@ -244,20 +252,67 @@ def _r2_client(settings: Settings):
 
 
 def _upload_pdf(downloaded: DownloadedPdf, object_key: str, settings: Settings) -> None:
+    _upload_local_pdf(
+        downloaded.path,
+        object_key,
+        downloaded.sha256,
+        settings,
+    )
+
+
+def _upload_local_pdf(
+    path: Path,
+    object_key: str,
+    sha256: str,
+    settings: Settings,
+    *,
+    metadata: dict[str, str] | None = None,
+) -> None:
+    object_metadata = {"sha256": sha256}
+    if metadata:
+        object_metadata.update(metadata)
     _r2_client(settings).upload_file(
-        str(downloaded.path),
+        str(path),
         settings.r2_bucket,
         object_key,
         ExtraArgs={
             "ContentType": "application/pdf",
             "ContentDisposition": "inline",
-            "Metadata": {"sha256": downloaded.sha256},
+            "Metadata": object_metadata,
         },
     )
 
 
 def _delete_object(object_key: str, settings: Settings) -> None:
     _r2_client(settings).delete_object(Bucket=settings.r2_bucket, Key=object_key)
+
+
+def _download_stored_pdf(
+    object_key: str,
+    expected_sha256: str | None,
+    source_content_type: str | None,
+    final_url: str,
+    settings: Settings,
+) -> DownloadedPdf:
+    path = _temporary_path(".pdf")
+    try:
+        _r2_client(settings).download_file(settings.r2_bucket, object_key, str(path))
+        with path.open("rb") as source:
+            if source.read(len(PDF_SIGNATURE)) != PDF_SIGNATURE:
+                raise RhpArchiveError("Stored RHP does not have a PDF signature")
+        sha256, size_bytes = _sha256_file(path)
+        if expected_sha256 and sha256 != expected_sha256:
+            raise RhpArchiveError("Stored RHP SHA-256 does not match its database record")
+        return DownloadedPdf(
+            path=path,
+            sha256=sha256,
+            size_bytes=size_bytes,
+            source_content_type=source_content_type,
+            final_url=final_url,
+        )
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
 
 
 async def delete_archived_rhp(document_id: int) -> bool:
@@ -279,10 +334,12 @@ async def delete_archived_rhp(document_id: int) -> bool:
             return False
         if document.storage_status not in {"STORED", "DELETE_FAILED"} or not document.storage_key:
             raise ValueError(f"RHP document {document_id} does not have a stored object")
-        object_key = document.storage_key
+        object_keys = {document.storage_key}
+        object_keys.update(file.storage_key for file in document.processing_files)
 
     try:
-        await asyncio.to_thread(_delete_object, object_key, settings)
+        for object_key in object_keys:
+            await asyncio.to_thread(_delete_object, object_key, settings)
     except Exception as exc:
         with SessionLocal() as db:
             document = db.get(IpoDocument, document_id)
@@ -296,13 +353,14 @@ async def delete_archived_rhp(document_id: int) -> bool:
         document.storage_status = "DELETED"
         document.storage_key = None
         document.size_bytes = None
+        document.processing_files.clear()
         document.storage_error = None
         document.storage_deleted_at = datetime.now(UTC)
         db.commit()
     return True
 
 
-async def archive_pending_rhps() -> tuple[int, int]:
+async def archive_pending_rhps(document_ids: set[int] | None = None) -> tuple[int, int]:
     """Archive a small post-ingestion batch without coupling R2 health to exchange data."""
     settings = get_settings()
     if not settings.r2_configuration_requested:
@@ -320,6 +378,23 @@ async def archive_pending_rhps() -> tuple[int, int]:
             ExchangeListing.exchange == Exchange.NSE,
         )
     )
+    stored_needs_processing = (
+        (IpoDocument.storage_status == "STORED")
+        & (IpoDocument.storage_key.is_not(None))
+        & or_(
+            IpoDocument.pdf_processing_status == "NOT_PREPARED",
+            (
+                (IpoDocument.pdf_processing_status == "FAILED")
+                & (
+                    (IpoDocument.storage_attempted_at.is_(None))
+                    | (IpoDocument.storage_attempted_at <= retry_before)
+                )
+            ),
+        )
+    )
+    target_documents = (
+        IpoDocument.id.in_(document_ids) if document_ids is not None else true()
+    )
     with SessionLocal() as db:
         documents = db.scalars(
             select(IpoDocument)
@@ -327,6 +402,7 @@ async def archive_pending_rhps() -> tuple[int, int]:
             .options(selectinload(IpoDocument.ipo))
             .where(
                 current_lifecycle.in_([Lifecycle.UPCOMING, Lifecycle.OPEN]),
+                target_documents,
                 or_(IpoDocument.url.op("~*")(NSE_URL_PATTERN), ~has_nse_listing),
                 IpoDocument.storage_attempts < 5,
                 or_(
@@ -342,16 +418,39 @@ async def archive_pending_rhps() -> tuple[int, int]:
                         (IpoDocument.storage_status == "DOWNLOADING")
                         & (IpoDocument.storage_attempted_at <= stale_before)
                     ),
+                    stored_needs_processing,
                 ),
             )
             .order_by(IpoDocument.id)
             .limit(settings.rhp_archive_batch_size)
         ).all()
-        work = [(item.id, item.ipo_id, item.ipo.open_date) for item in documents]
+        work = [
+            (
+                item.id,
+                item.ipo_id,
+                item.ipo.open_date,
+                item.storage_status,
+                item.storage_key,
+                item.content_sha256,
+                item.source_content_type,
+                item.final_source_url or item.url,
+            )
+            for item in documents
+        ]
 
     stored = 0
     failed = 0
-    for document_id, ipo_id, open_date in work:
+    for (
+        document_id,
+        ipo_id,
+        open_date,
+        initial_storage_status,
+        stored_object_key,
+        stored_sha256,
+        stored_content_type,
+        stored_final_url,
+    ) in work:
+        reuse_stored_pdf = initial_storage_status == "STORED" and bool(stored_object_key)
         with SessionLocal() as db:
             document = db.get(IpoDocument, document_id)
             document.storage_status = "DOWNLOADING"
@@ -363,10 +462,83 @@ async def archive_pending_rhps() -> tuple[int, int]:
 
         downloaded: DownloadedPdf | None = None
         try:
-            downloaded = await download_rhp(source_url, settings)
             year = open_date.year if open_date else datetime.now(UTC).year
-            object_key = f"rhp/{year}/{ipo_id}/{downloaded.sha256}.pdf"
-            await asyncio.to_thread(_upload_pdf, downloaded, object_key, settings)
+            if reuse_stored_pdf:
+                downloaded = await asyncio.to_thread(
+                    _download_stored_pdf,
+                    stored_object_key,
+                    stored_sha256,
+                    stored_content_type,
+                    stored_final_url,
+                    settings,
+                )
+                object_key = stored_object_key
+            else:
+                downloaded = await download_rhp(source_url, settings)
+                object_key = f"rhp/{year}/{ipo_id}/{downloaded.sha256}.pdf"
+                await asyncio.to_thread(_upload_pdf, downloaded, object_key, settings)
+
+            inspection: PdfInspection | None = None
+            inspection_error: PdfInspectionError | None = None
+            decision: PdfProcessingDecision | None = None
+            prepared_files: list[tuple[PreparedPdf, str]] = []
+            preparation_error: str | None = None
+            preparation_warning: str | None = None
+            try:
+                inspection = await asyncio.to_thread(inspect_pdf, downloaded.path)
+                decision = choose_pdf_processing_path(
+                    inspection.size_bytes,
+                    inspection.page_count,
+                    max_bytes=settings.gemini_safe_pdf_bytes,
+                    max_pages=settings.gemini_max_pdf_pages,
+                )
+            except PdfInspectionError as exc:
+                inspection_error = exc
+
+            if inspection is not None:
+                try:
+                    with tempfile.TemporaryDirectory(
+                        prefix="ipodekho-rhp-processing-"
+                    ) as directory:
+                        prepared_set = await asyncio.to_thread(
+                            prepare_pdf_for_gemini,
+                            downloaded.path,
+                            inspection,
+                            Path(directory),
+                            direct_max_bytes=settings.gemini_safe_pdf_bytes,
+                            direct_max_pages=settings.gemini_max_pdf_pages,
+                            chunk_max_bytes=settings.rhp_chunk_max_bytes,
+                            chunk_max_pages=settings.rhp_chunk_max_pages,
+                        )
+                        preparation_warning = prepared_set.optimization_error
+                        for prepared in prepared_set.files:
+                            if prepared.kind == "ORIGINAL":
+                                processing_key = object_key
+                            else:
+                                filename = (
+                                    f"chunk-{prepared.chunk_index:04d}-{prepared.sha256}.pdf"
+                                    if prepared.chunk_index is not None
+                                    else f"optimized-{prepared.sha256}.pdf"
+                                )
+                                processing_key = (
+                                    f"rhp-processing/{year}/{ipo_id}/{downloaded.sha256}/{filename}"
+                                )
+                                await asyncio.to_thread(
+                                    _upload_local_pdf,
+                                    prepared.path,
+                                    processing_key,
+                                    prepared.sha256,
+                                    settings,
+                                    metadata={
+                                        "kind": prepared.kind.lower(),
+                                        "original-start-page": str(prepared.original_start_page),
+                                        "original-end-page": str(prepared.original_end_page),
+                                    },
+                                )
+                            prepared_files.append((prepared, processing_key))
+                except PdfPreparationError as exc:
+                    preparation_error = str(exc)
+
             with SessionLocal() as db:
                 document = db.get(IpoDocument, document_id)
                 document.storage_status = "STORED"
@@ -377,14 +549,68 @@ async def archive_pending_rhps() -> tuple[int, int]:
                 document.final_source_url = downloaded.final_url
                 document.storage_error = None
                 document.stored_at = datetime.now(UTC)
+                document.pdf_page_count = inspection.page_count if inspection else None
+                document.pdf_encrypted = (
+                    inspection.encrypted if inspection else inspection_error.encrypted
+                )
+                document.pdf_malformed = bool(inspection_error and not inspection_error.encrypted)
+                document.pdf_inspection_status = (
+                    "INSPECTED"
+                    if inspection
+                    else "ENCRYPTED"
+                    if inspection_error.encrypted
+                    else "MALFORMED"
+                )
+                document.pdf_processing_decision = decision.value if decision else None
+                document.gemini_direct_eligible = decision == PdfProcessingDecision.DIRECT
+                document.pdf_inspection_error = (
+                    str(inspection_error)[:4000] if inspection_error else None
+                )
+                document.pdf_inspected_at = datetime.now(UTC)
+                document.processing_files.clear()
+                for prepared, processing_key in prepared_files:
+                    document.processing_files.append(
+                        RhpProcessingFile(
+                            kind=prepared.kind,
+                            chunk_index=prepared.chunk_index,
+                            storage_key=processing_key,
+                            content_sha256=prepared.sha256,
+                            size_bytes=prepared.size_bytes,
+                            page_count=prepared.page_count,
+                            original_start_page=prepared.original_start_page,
+                            original_end_page=prepared.original_end_page,
+                        )
+                    )
+                if inspection_error:
+                    document.pdf_processing_status = "BLOCKED"
+                    document.pdf_processing_error = str(inspection_error)[:4000]
+                elif preparation_error:
+                    document.pdf_processing_status = "FAILED"
+                    document.pdf_processing_error = preparation_error[:4000]
+                elif preparation_warning:
+                    document.pdf_processing_status = "READY_WITH_WARNINGS"
+                    document.pdf_processing_error = preparation_warning[:4000]
+                else:
+                    document.pdf_processing_status = "READY"
+                    document.pdf_processing_error = None
+                document.pdf_processing_prepared_at = datetime.now(UTC)
                 db.commit()
             stored += 1
         except Exception as exc:
-            status = "REJECTED" if isinstance(exc, RhpRejectedError) else "FAILED"
+            status = (
+                "STORED"
+                if reuse_stored_pdf
+                else "REJECTED"
+                if isinstance(exc, RhpRejectedError)
+                else "FAILED"
+            )
             with SessionLocal() as db:
                 document = db.get(IpoDocument, document_id)
                 document.storage_status = status
                 document.storage_error = str(exc)[:4000]
+                if reuse_stored_pdf:
+                    document.pdf_processing_status = "FAILED"
+                    document.pdf_processing_error = str(exc)[:4000]
                 db.commit()
             failed += 1
             logger.exception(

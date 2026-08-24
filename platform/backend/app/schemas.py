@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -132,6 +133,9 @@ class IpoDetail(IpoCard):
     bid_rules: list[BidRuleOut]
     reservation_summary: ReservationSummaryOut | None
     lot_size_applications: list[LotApplicationOut]
+    rhp_analysis: dict[str, Any] | None
+    rhp_analysis_status: str | None
+    rhp_approved_at: datetime | None
     master_data_last_fetched_at: datetime | None
     master_data_sources: list[str]
     last_updated_at: datetime

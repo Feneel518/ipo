@@ -1,6 +1,6 @@
 # IPO Dekho — Project Progress Checklist
 
-Last reviewed: 20 August 2026
+Last reviewed: 24 August 2026
 
 Use `[x]` for completed work and `[ ]` for work that is still pending. Update this file in the same commit as the work it tracks so the checklist stays reliable.
 
@@ -29,6 +29,13 @@ Use `[x]` for completed work and `[ ]` for work that is still pending. Update th
 - [x] Persisted IPO allotment, refund, and share-credit dates with automatic backfill
 - [x] Idempotent ingestion and immutable subscription history
 - [x] Stale-source safeguards and raw snapshot support
+- [x] Canonical RHP PDF archiving to Cloudflare R2 (without ZIP retention)
+- [x] PDF inspection, structural optimization, byte-aware splitting, and original-page mapping
+- [x] Versioned Gemini extraction jobs/runs with raw JSON, usage, retries, and canonical metrics
+- [x] Single-file Gemini extraction worker for original and optimized RHPs
+- [x] Validate the Gemini happy path against five real ordinary RHPs
+- [x] Auditable RHP warning review and approval workflow
+- [ ] Reconcile split-PDF chunk candidates into one extraction
 - [x] Automated backend tests for adapters, normalization, master data, and history
 - [ ] Validate live NSE and BSE output against exchange pages
 - [ ] Test a complete IPO lifecycle from upcoming through listing

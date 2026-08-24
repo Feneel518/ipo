@@ -12,6 +12,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Index,
+    Integer,
     Numeric,
     String,
     Text,
@@ -176,6 +177,21 @@ class IpoDocument(Base):
     storage_key: Mapped[str | None] = mapped_column(Text)
     content_sha256: Mapped[str | None] = mapped_column(String(64), index=True)
     size_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    pdf_page_count: Mapped[int | None] = mapped_column()
+    pdf_encrypted: Mapped[bool | None] = mapped_column(Boolean)
+    pdf_malformed: Mapped[bool | None] = mapped_column(Boolean)
+    pdf_inspection_status: Mapped[str] = mapped_column(
+        String(30), default="NOT_INSPECTED", index=True
+    )
+    pdf_processing_decision: Mapped[str | None] = mapped_column(String(50), index=True)
+    gemini_direct_eligible: Mapped[bool | None] = mapped_column(Boolean)
+    pdf_inspection_error: Mapped[str | None] = mapped_column(Text)
+    pdf_inspected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    pdf_processing_status: Mapped[str] = mapped_column(
+        String(30), default="NOT_PREPARED", index=True
+    )
+    pdf_processing_error: Mapped[str | None] = mapped_column(Text)
+    pdf_processing_prepared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     source_content_type: Mapped[str | None] = mapped_column(String(200))
     final_source_url: Mapped[str | None] = mapped_column(Text)
     storage_attempts: Mapped[int] = mapped_column(default=0)
@@ -184,6 +200,170 @@ class IpoDocument(Base):
     stored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     storage_deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ipo: Mapped[Ipo] = relationship(back_populates="documents")
+    processing_files: Mapped[list["RhpProcessingFile"]] = relationship(
+        back_populates="document", cascade="all, delete-orphan"
+    )
+    extraction_jobs: Mapped[list["IpoExtractionJob"]] = relationship(
+        back_populates="document", cascade="all, delete-orphan"
+    )
+    extraction_runs: Mapped[list["IpoExtractionRun"]] = relationship(
+        back_populates="document", cascade="all, delete-orphan"
+    )
+
+
+class RhpProcessingFile(Base):
+    """A Gemini-safe PDF and its mapping back to canonical RHP pages."""
+
+    __tablename__ = "rhp_processing_files"
+    __table_args__ = (
+        UniqueConstraint("document_id", "kind", "chunk_index"),
+        Index("ix_rhp_processing_files_document_chunk", "document_id", "chunk_index"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    document_id: Mapped[int] = mapped_column(
+        ForeignKey("ipo_documents.id", ondelete="CASCADE"), index=True
+    )
+    kind: Mapped[str] = mapped_column(String(20))
+    chunk_index: Mapped[int | None] = mapped_column()
+    storage_key: Mapped[str] = mapped_column(Text)
+    content_sha256: Mapped[str] = mapped_column(String(64))
+    size_bytes: Mapped[int] = mapped_column(BigInteger)
+    page_count: Mapped[int] = mapped_column()
+    original_start_page: Mapped[int] = mapped_column()
+    original_end_page: Mapped[int] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    document: Mapped[IpoDocument] = relationship(back_populates="processing_files")
+    extraction_runs: Mapped[list["IpoExtractionRun"]] = relationship(
+        back_populates="processing_file"
+    )
+
+
+class IpoExtractionJob(Base):
+    """Durable PostgreSQL queue entry for one versioned document extraction."""
+
+    __tablename__ = "ipo_extraction_jobs"
+    __table_args__ = (
+        UniqueConstraint(
+            "document_sha256",
+            "model",
+            "prompt_version",
+            "schema_version",
+            name="uq_ipo_extraction_job_identity",
+        ),
+        Index("ix_ipo_extraction_jobs_claim", "status", "next_attempt_at", "created_at"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    document_id: Mapped[int] = mapped_column(
+        ForeignKey("ipo_documents.id", ondelete="CASCADE"), index=True
+    )
+    document_sha256: Mapped[str] = mapped_column(String(64), index=True)
+    model: Mapped[str] = mapped_column(String(100))
+    prompt_version: Mapped[str] = mapped_column(String(32))
+    schema_version: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32), default="QUEUED", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error_code: Mapped[str | None] = mapped_column(String(100))
+    last_error_message: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    document: Mapped[IpoDocument] = relationship(back_populates="extraction_jobs")
+    runs: Mapped[list["IpoExtractionRun"]] = relationship(
+        back_populates="job", cascade="all, delete-orphan"
+    )
+
+
+class IpoExtractionRun(Base):
+    """Immutable audit record for a single paid extraction attempt."""
+
+    __tablename__ = "ipo_extraction_runs"
+    __table_args__ = (
+        Index("ix_ipo_extraction_runs_identity", "document_sha256", "model"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    job_id: Mapped[int] = mapped_column(
+        ForeignKey("ipo_extraction_jobs.id", ondelete="CASCADE"), index=True
+    )
+    document_id: Mapped[int] = mapped_column(
+        ForeignKey("ipo_documents.id", ondelete="CASCADE"), index=True
+    )
+    processing_file_id: Mapped[int | None] = mapped_column(
+        ForeignKey("rhp_processing_files.id", ondelete="SET NULL"), index=True
+    )
+    document_sha256: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(100))
+    prompt_version: Mapped[str] = mapped_column(String(32))
+    schema_version: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32), index=True)
+    raw_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    validation_issues: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    request_count: Mapped[int] = mapped_column(Integer, default=1)
+    estimated_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
+    gemini_file_name: Mapped[str | None] = mapped_column(Text)
+    gemini_file_uri: Mapped[str | None] = mapped_column(Text)
+    error_code: Mapped[str | None] = mapped_column(String(100))
+    error_message: Mapped[str | None] = mapped_column(Text)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reviewed_by: Mapped[str | None] = mapped_column(String(200))
+    review_resolutions: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    job: Mapped[IpoExtractionJob] = relationship(back_populates="runs")
+    document: Mapped[IpoDocument] = relationship(back_populates="extraction_runs")
+    processing_file: Mapped[RhpProcessingFile | None] = relationship(
+        back_populates="extraction_runs"
+    )
+    metrics: Mapped[list["IpoMetric"]] = relationship(
+        back_populates="extraction_run", cascade="all, delete-orphan"
+    )
+
+
+class IpoMetric(Base):
+    """Canonical reported fact normalized from a versioned RHP extraction."""
+
+    __tablename__ = "ipo_metrics"
+    __table_args__ = (
+        UniqueConstraint(
+            "extraction_run_id",
+            "metric",
+            "financial_year",
+            name="uq_ipo_metric_run_metric_period",
+        ),
+        Index("ix_ipo_metrics_ipo_metric", "ipo_id", "metric"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ipo_id: Mapped[int] = mapped_column(
+        ForeignKey("ipos.id", ondelete="CASCADE"), index=True
+    )
+    document_id: Mapped[int] = mapped_column(
+        ForeignKey("ipo_documents.id", ondelete="CASCADE"), index=True
+    )
+    extraction_run_id: Mapped[int] = mapped_column(
+        ForeignKey("ipo_extraction_runs.id", ondelete="CASCADE"), index=True
+    )
+    metric: Mapped[str] = mapped_column(String(100), index=True)
+    financial_year: Mapped[str | None] = mapped_column(String(20))
+    numeric_value: Mapped[Decimal | None] = mapped_column(Numeric(24, 6))
+    text_value: Mapped[str | None] = mapped_column(Text)
+    unit: Mapped[str | None] = mapped_column(String(32))
+    source: Mapped[str] = mapped_column(String(32), default="RHP")
+    status: Mapped[str] = mapped_column(String(32))
+    provenance: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    verification_status: Mapped[str | None] = mapped_column(String(32))
+    extraction_run: Mapped[IpoExtractionRun] = relationship(back_populates="metrics")
 
 
 class SubscriptionSnapshot(Base):

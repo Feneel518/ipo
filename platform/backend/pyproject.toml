@@ -10,10 +10,13 @@ dependencies = [
   "alembic>=1.16,<2",
   "boto3>=1.35,<2",
   "fastapi>=0.116,<1",
+  "google-genai==2.19.0",
   "google-cloud-storage>=3.2,<4",
   "httpx>=0.28,<1",
   "psycopg[binary,pool]>=3.2,<4",
   "pydantic-settings>=2.10,<3",
+  "pikepdf>=9,<11",
+  "pypdf>=5.9,<6",
   "python-slugify>=8.0,<9",
   "sqlalchemy>=2.0,<3",
   "tenacity>=9.1,<10",
@@ -25,6 +28,8 @@ dev = ["pytest>=8.4,<9", "pytest-asyncio>=1.1,<2", "ruff>=0.12,<1"]
 
 [project.scripts]
 ipo-ingest = "app.ingestion.cli:main"
+ipo-extract = "app.services.rhp.cli:main"
+ipo-review = "app.services.rhp.review_cli:main"
 
 [tool.setuptools.packages.find]
 include = ["app*"]
@@ -33,6 +38,9 @@ include = ["app*"]
 pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+  "live_gemini: opt-in test that uploads five real PDFs and incurs Gemini API usage",
+]
 
 [tool.ruff]
 line-length = 100

@@ -16,7 +16,7 @@ The backend is prepared for Railway project `46b87785-dd77-4293-b1f7-e14df5dcaf7
 
 ### Railway
 
-Add a PostgreSQL database to the Railway project, then create two services from this repository.
+Add a PostgreSQL database to the Railway project, then create three services from this repository.
 
 #### API service
 
@@ -58,18 +58,74 @@ R2_ENDPOINT_URL=https://YOUR_CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com
 R2_ACCESS_KEY_ID=YOUR_R2_ACCESS_KEY_ID
 R2_SECRET_ACCESS_KEY=YOUR_R2_SECRET_ACCESS_KEY
 RHP_ALLOWED_HOSTS=nseindia.com,bseindia.com
+GEMINI_SAFE_PDF_BYTES=47185920
+GEMINI_MAX_PDF_PAGES=1000
+RHP_CHUNK_MAX_BYTES=41943040
+RHP_CHUNK_MAX_PAGES=300
 ```
 
 Create an R2 S3 API token with **Object Read & Write** access scoped only to the `ipo` bucket.
 Keep the bucket private: the current website continues to link to the official exchange URL, while
-R2 holds the temporary canonical copy for backend processing. After a Gemini extraction is
-successfully committed to the database, its worker must call the R2 cleanup operation. No CORS
-rule, public `r2.dev` URL, custom
-domain, or Worker is required for this ingestion stage.
+R2 retains the canonical copy so a versioned extraction can be reproduced after Gemini's temporary
+file expires. No CORS rule, public `r2.dev` URL, custom domain, or Worker is required.
 
 The ingestion job accepts either a direct PDF or a ZIP used by an exchange as transport. For ZIP
 responses it extracts one RHP PDF into a temporary file, uploads only that PDF, and removes both
 temporary files. R2 keys use `rhp/{year}/{ipo_id}/{sha256}.pdf`; ZIP files are never stored.
+Each stored PDF is inspected for page count, encryption, and parse errors. Documents at or below
+45 MiB and 1,000 pages are marked `DIRECT`. Oversized documents are structurally optimized and,
+when still over the direct limits, split into chunks of at most 40 MiB and 300 pages. Processing
+files remain private in R2 and retain their original PDF page ranges for extraction provenance.
+
+#### RHP extraction cron service
+
+Create a third service from the same repository and set:
+
+- Root Directory: `/platform/backend`
+- Config File Path: `/platform/backend/railway.extract.toml`
+- No public domain is required
+
+Give it the database and R2 variables above, plus:
+
+```dotenv
+GEMINI_API_KEY=YOUR_SERVER_SIDE_GEMINI_KEY
+RHP_PRIMARY_MODEL=gemini-3.5-flash-lite
+RHP_PROMPT_VERSION=rhp-v1.7
+RHP_SCHEMA_VERSION=rhp-v1.1
+RHP_EXTRACTION_BATCH_SIZE=5
+RHP_EXTRACTION_MAX_ATTEMPTS=3
+GEMINI_FILE_TIMEOUT_SECONDS=300
+GEMINI_FILE_POLL_SECONDS=2
+GEMINI_REQUEST_TIMEOUT_SECONDS=180
+```
+
+`GEMINI_API_KEY` belongs only on this backend worker and must never use a `NEXT_PUBLIC_` prefix.
+The worker claims jobs with PostgreSQL row locks, uploads one prepared PDF to Gemini, stores the
+raw structured response and usage metadata, validates it, and writes canonical reported metrics.
+Its identity is the document SHA-256 plus model, prompt version, and schema version, so completed
+work is not paid for twice. Temporary Gemini files are deleted after each attempt.
+
+Gemini extraction uses four focused JSON passes over the same temporary file: company, financials,
+offer/promoters/customers, and material risks. Each pass is validated with Pydantic before the
+results are merged. Partial valid passes are retained for retries, and rate-limit retries honor
+Gemini's requested delay. Missing disclosures remain `NOT_FOUND` or `NOT_APPLICABLE` and are not
+treated as extraction failures. A claimed numeric value whose focused citation does not support it
+is retained in the raw audit record but omitted from canonical output as `AMBIGUOUS`.
+
+Warning-bearing runs use an explicit human approval workflow. Each warning needs an ordered
+disposition and audit note before the run can move from `READY_WITH_WARNINGS` to `REVIEWED`, and
+only a reviewed run can move to `APPROVED`:
+
+```powershell
+ipo-review review --run-id 123 --reviewer reviewer-name `
+  --resolution "MODEL_WARNING=ACCEPTED=Checked against the cited RHP page."
+ipo-review approve --run-id 123 --approver approver-name
+```
+
+The current worker intentionally accepts only RHPs represented by one `ORIGINAL` or `OPTIMIZED`
+processing file. Documents split into `CHUNK` files remain unqueued until candidate reconciliation
+is implemented. Run one batch locally with `ipo-extract --limit 5` after applying migrations and
+setting the backend credentials.
 
 ### Vercel
 
