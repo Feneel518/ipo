@@ -35,12 +35,39 @@ function sourcePage(fact: RhpTextFact | RhpNumericFact) {
   return source.document_page_label ? `RHP p. ${source.document_page_label}` : source.pdf_page ? `PDF p. ${source.pdf_page}` : null;
 }
 
-export function RhpAnalysis({ analysis, sourceUrl, approvedAt, status }: { analysis: RhpAnalysisData; sourceUrl?: string; approvedAt: string | null; status: "READY" | "APPROVED" | null }) {
-  const description = foundText(analysis.company.business_description);
-  const industry = foundText(analysis.company.industry);
+export function RhpAnalysis({ analysis }: { analysis: RhpAnalysisData }) {
   const strengths = analysis.company.competitive_strengths.filter(foundText);
   const drivers = analysis.company.growth_drivers.filter(foundText);
   const objects = analysis.ipo.objects_of_issue.filter(foundText);
+
+  return (
+    <section className="rhp-analysis" aria-labelledby="rhp-analysis-title">
+      <header className="rhp-analysis-heading">
+        <div><p className="overline">Prospectus dossier</p><h2 id="rhp-analysis-title">Numbers, plans<br /><em>&amp; pressure points.</em></h2></div>
+        <p>A focused reading of the company&apos;s reported financials, planned use of proceeds, business strengths and material risks.</p>
+      </header>
+
+      {analysis.financials.length > 0 && <article className="financial-ledger">
+        <header><div><span className="brief-index">01</span><p className="overline">Reported financials</p><h3>A multi-year view</h3></div><small>Figures retain the units reported in the RHP</small></header>
+        <div className="rhp-table-wrap"><table><thead><tr><th scope="col">Financial year</th>{financialColumns.map(([label]) => <th scope="col" key={label}>{label}</th>)}</tr></thead><tbody>{analysis.financials.map((period) => <tr key={period.financial_year}><th scope="row">{period.financial_year}</th>{financialColumns.map(([label, key]) => <td data-label={label} key={key}>{numberLabel(period[key])}</td>)}</tr>)}</tbody></table></div>
+      </article>}
+
+      {(objects.length > 0 || strengths.length > 0 || drivers.length > 0) && <div className="rhp-thesis-grid">
+        {objects.length > 0 && <article><span className="thesis-number">02 / use of funds</span><h3>Where the money goes</h3><ol>{objects.map((fact, index) => <li key={`${fact.value}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><p>{fact.value}<small>{sourcePage(fact)}</small></p></li>)}</ol></article>}
+        {(strengths.length > 0 || drivers.length > 0) && <article className="growth-case"><span className="thesis-number">03 / growth case</span><h3>What could drive the business</h3><ul>{[...strengths, ...drivers].slice(0, 8).map((fact, index) => <li key={`${fact.value}-${index}`}><span aria-hidden="true">↗</span><p>{fact.value}<small>{sourcePage(fact)}</small></p></li>)}</ul></article>}
+      </div>}
+
+      {analysis.risks.length > 0 && <article className="rhp-risks">
+        <header><div><span className="brief-index">04</span><p className="overline">Risk factors</p><h3>Read the downside first</h3></div><p>Selected material risks disclosed in the RHP. This is a summary, not a substitute for the prospectus.</p></header>
+        <div className="risk-register">{analysis.risks.map((risk, index) => <details key={`${risk.title}-${index}`} open={index === 0}><summary><span>{String(index + 1).padStart(2, "0")}</span><div><small>{risk.category.replaceAll("_", " ")}</small><strong>{risk.title}</strong></div><i aria-hidden="true">+</i></summary><p>{risk.description}</p></details>)}</div>
+      </article>}
+    </section>
+  );
+}
+
+export function CompanyOverview({ analysis, sourceUrl, approvedAt, status }: { analysis: RhpAnalysisData; sourceUrl?: string; approvedAt: string | null; status: "READY" | "APPROVED" | null }) {
+  const description = foundText(analysis.company.business_description);
+  const industry = foundText(analysis.company.industry);
   const latestFinancial = analysis.financials[0];
   const highlights: Array<[string, RhpNumericFact | undefined, string]> = [
     ["Promoter holding", analysis.promoters.post_issue_holding_pct, "after the issue"],
@@ -51,36 +78,29 @@ export function RhpAnalysis({ analysis, sourceUrl, approvedAt, status }: { analy
   const approvedLabel = approvedAt
     ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" }).format(new Date(approvedAt))
     : null;
+  const products = analysis.company.products_services.slice(0, 8);
+  if (!description && !industry && products.length === 0) return null;
 
   return (
-    <section className="rhp-analysis" aria-labelledby="rhp-analysis-title">
-      <header className="rhp-analysis-heading">
-        <div><p className="overline">Inside the prospectus</p><h2 id="rhp-analysis-title">The business,<br /><em>decoded.</em></h2></div>
-        <div className="rhp-verification"><span>{status === "APPROVED" ? "Human-approved extraction" : "Validated extraction"}</span><strong>{approvedLabel ?? "Checked against cited RHP pages"}</strong>{sourceUrl && <a href={sourceUrl} target="_blank" rel="noreferrer">Read source RHP ↗</a>}</div>
-      </header>
-
-      {(description || industry) && <article className="company-brief">
-        <div className="brief-index" aria-hidden="true">01</div>
-        <div><p className="overline">Company brief</p>{industry && <span className="industry-tag">{industry}</span>}<h3>What the company does</h3>{description && <p>{description}</p>}
-          {analysis.company.products_services.length > 0 && <ul className="product-tags" aria-label="Products and services">{analysis.company.products_services.map((item) => <li key={item}>{item}</li>)}</ul>}
+    <section className="company-overview" aria-labelledby="company-overview-title">
+      <div className="company-overview-topline">
+        <p className="overline">Company at a glance</p>
+        <span>{status === "APPROVED" ? "Human reviewed" : "RHP validated"} · {approvedLabel ?? "source checked"}</span>
+      </div>
+      <div className="company-overview-grid">
+        <header>
+          {industry && <span className="industry-tag">{industry}</span>}
+          <h2 id="company-overview-title">What the company does</h2>
+        </header>
+        <div className="company-overview-copy">
+          {description && <p>{description}</p>}
+          {sourceUrl && <a href={sourceUrl} target="_blank" rel="noreferrer">Verify in the RHP <span aria-hidden="true">↗</span></a>}
         </div>
+      </div>
+      {(products.length > 0 || visibleHighlights.length > 0) && <div className="company-overview-rail">
+        {products.length > 0 && <div className="company-products"><span>Products &amp; services</span><ul aria-label="Products and services">{products.map((item) => <li key={item}>{item}</li>)}</ul>{analysis.company.products_services.length > products.length && <small>+{analysis.company.products_services.length - products.length} more in the RHP</small>}</div>}
         {visibleHighlights.length > 0 && <dl className="rhp-highlights">{visibleHighlights.map(([label, fact, hint]) => <div key={label}><dt>{label}</dt><dd>{numberLabel(fact)}</dd><small>{hint}</small></div>)}</dl>}
-      </article>}
-
-      {analysis.financials.length > 0 && <article className="financial-ledger">
-        <header><div><span className="brief-index">02</span><p className="overline">Reported financials</p><h3>A multi-year view</h3></div><small>Figures retain the units reported in the RHP</small></header>
-        <div className="rhp-table-wrap"><table><thead><tr><th scope="col">Financial year</th>{financialColumns.map(([label]) => <th scope="col" key={label}>{label}</th>)}</tr></thead><tbody>{analysis.financials.map((period) => <tr key={period.financial_year}><th scope="row">{period.financial_year}</th>{financialColumns.map(([label, key]) => <td data-label={label} key={key}>{numberLabel(period[key])}</td>)}</tr>)}</tbody></table></div>
-      </article>}
-
-      {(objects.length > 0 || strengths.length > 0 || drivers.length > 0) && <div className="rhp-thesis-grid">
-        {objects.length > 0 && <article><span className="thesis-number">03 / use of funds</span><h3>Where the money goes</h3><ol>{objects.map((fact, index) => <li key={`${fact.value}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span><p>{fact.value}<small>{sourcePage(fact)}</small></p></li>)}</ol></article>}
-        {(strengths.length > 0 || drivers.length > 0) && <article className="growth-case"><span className="thesis-number">04 / growth case</span><h3>What could drive the business</h3><ul>{[...strengths, ...drivers].slice(0, 8).map((fact, index) => <li key={`${fact.value}-${index}`}><span aria-hidden="true">↗</span><p>{fact.value}<small>{sourcePage(fact)}</small></p></li>)}</ul></article>}
       </div>}
-
-      {analysis.risks.length > 0 && <article className="rhp-risks">
-        <header><div><span className="brief-index">05</span><p className="overline">Risk factors</p><h3>Read the downside first</h3></div><p>Selected material risks disclosed in the RHP. This is a summary, not a substitute for the prospectus.</p></header>
-        <div className="risk-register">{analysis.risks.map((risk, index) => <details key={`${risk.title}-${index}`} open={index === 0}><summary><span>{String(index + 1).padStart(2, "0")}</span><div><small>{risk.category.replaceAll("_", " ")}</small><strong>{risk.title}</strong></div><i aria-hidden="true">+</i></summary><p>{risk.description}</p></details>)}</div>
-      </article>}
     </section>
   );
 }
