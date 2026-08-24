@@ -5,6 +5,7 @@ import { AutoRefresh } from "@/components/auto-refresh";
 import { IpoMarketIllustration } from "@/components/ipo-market-illustration";
 import { IpoTimetable } from "@/components/ipo-timetable";
 import { OfferStructure } from "@/components/offer-structure";
+import { RhpAnalysis } from "@/components/rhp-analysis";
 import { StatusPill } from "@/components/status-pill";
 import { SubscriptionMomentum } from "@/components/subscription-momentum";
 import { getIpo } from "@/lib/api";
@@ -103,6 +104,12 @@ export default async function IpoPage({ params }: { params: Params }) {
         </aside>
       </div>
       <OfferStructure ipo={ipo} latestSubscriptions={latest} />
+      {ipo.rhp_analysis && <RhpAnalysis
+        analysis={ipo.rhp_analysis}
+        approvedAt={ipo.rhp_approved_at}
+        status={ipo.rhp_analysis_status}
+        sourceUrl={ipo.documents.find((document) => document.document_type.toUpperCase().includes("RHP"))?.url}
+      />}
       {ipo.lifecycle === "OPEN" && <section className="live-book" id="demand-book">
         <header className="live-book-heading">
           <div><p className="overline">Live issue demand</p><h2>The book,<br /><em>in motion.</em></h2><p>Follow subscription as confirmed exchange bids enter the book.</p></div>

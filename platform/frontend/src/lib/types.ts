@@ -58,6 +58,68 @@ export interface LotApplication {
   amount: string;
 }
 
+export type RhpFieldStatus = "FOUND" | "NOT_FOUND" | "AMBIGUOUS" | "CONFLICTING" | "NOT_APPLICABLE";
+
+export interface RhpEvidence {
+  pdf_page: number | null;
+  document_page_label: string | null;
+  evidence: string | null;
+}
+
+export interface RhpNumericFact {
+  value: number | null;
+  unit: "INR" | "INR_LAKH" | "INR_CRORE" | "INR_MILLION" | "PERCENT" | "RATIO" | "SHARES" | "OTHER" | null;
+  status: RhpFieldStatus;
+  sources: RhpEvidence[];
+}
+
+export interface RhpTextFact {
+  value: string | null;
+  status: RhpFieldStatus;
+  sources: RhpEvidence[];
+}
+
+export interface RhpAnalysis {
+  company: {
+    company_name: string | null;
+    industry: RhpTextFact;
+    business_description: RhpTextFact;
+    products_services: string[];
+    competitive_strengths: RhpTextFact[];
+    growth_drivers: RhpTextFact[];
+  };
+  financials: Array<{
+    financial_year: string;
+    revenue_from_operations: RhpNumericFact;
+    profit_after_tax: RhpNumericFact;
+    finance_cost: RhpNumericFact;
+    operating_cash_flow: RhpNumericFact;
+    trade_receivables: RhpNumericFact;
+    total_borrowings: RhpNumericFact;
+    total_equity: RhpNumericFact;
+  }>;
+  promoters: {
+    names: string[];
+    pre_issue_holding_pct: RhpNumericFact;
+    post_issue_holding_pct: RhpNumericFact;
+    pledged_shares_pct: RhpNumericFact;
+  };
+  ipo: {
+    fresh_issue_amount: RhpNumericFact;
+    offer_for_sale_amount: RhpNumericFact;
+    total_issue_amount: RhpNumericFact;
+    objects_of_issue: RhpTextFact[];
+  };
+  customer_concentration: {
+    top_customer_revenue_pct: RhpNumericFact;
+    top_5_customer_revenue_pct: RhpNumericFact;
+    top_10_customer_revenue_pct: RhpNumericFact;
+    commentary: RhpTextFact;
+  };
+  peers: Array<{ name: string; pe_reported_in_rhp: RhpNumericFact }>;
+  risks: Array<{ title: string; category: string; description: string; sources: RhpEvidence[] }>;
+}
+
 export interface IpoCardData {
   id: number;
   company_name: string;
@@ -119,6 +181,9 @@ export interface IpoDetailData extends IpoCardData {
   bid_rules: BidRule[];
   reservation_summary: ReservationSummary | null;
   lot_size_applications: LotApplication[];
+  rhp_analysis: RhpAnalysis | null;
+  rhp_analysis_status: "READY" | "APPROVED" | null;
+  rhp_approved_at: string | null;
   master_data_last_fetched_at: string | null;
   master_data_sources: string[];
   last_updated_at: string;

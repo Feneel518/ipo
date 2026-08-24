@@ -21,6 +21,19 @@ class Settings(BaseSettings):
     rhp_download_read_timeout_seconds: float = 60
     rhp_max_redirects: int = 5
     rhp_archive_batch_size: int = 10
+    gemini_safe_pdf_bytes: int = 45 * 1024 * 1024
+    gemini_max_pdf_pages: int = 1000
+    rhp_chunk_max_bytes: int = 40 * 1024 * 1024
+    rhp_chunk_max_pages: int = 300
+    gemini_api_key: str | None = None
+    rhp_primary_model: str = "gemini-3.5-flash-lite"
+    rhp_prompt_version: str = "rhp-v1.7"
+    rhp_schema_version: str = "rhp-v1.1"
+    rhp_extraction_batch_size: int = 5
+    rhp_extraction_max_attempts: int = 3
+    gemini_file_timeout_seconds: int = 300
+    gemini_file_poll_seconds: float = 2
+    gemini_request_timeout_seconds: int = 180
     revalidation_url: str | None = None
     revalidation_secret: str | None = None
     internal_api_token: str = Field(default="change-me", min_length=8)
@@ -66,6 +79,10 @@ class Settings(BaseSettings):
                 self.r2_secret_access_key,
             )
         )
+
+    @property
+    def gemini_configured(self) -> bool:
+        return bool(self.gemini_api_key and self.gemini_api_key.strip())
 
 
 @lru_cache

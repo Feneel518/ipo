@@ -1,11 +1,13 @@
 import hashlib
 import zipfile
+from pathlib import Path
 
 import pytest
 
 from app.config import Settings
 from app.ingestion.rhp_storage import (
     RhpRejectedError,
+    _download_stored_pdf,
     _extract_pdf_from_zip,
     _host_is_allowed,
     _upload_pdf,
@@ -119,3 +121,33 @@ def test_r2_delete_uses_the_recorded_object_key(monkeypatch):
     _delete_object("rhp/2026/1/hash.pdf", settings)
 
     assert calls == [{"Bucket": "ipo", "Key": "rhp/2026/1/hash.pdf"}]
+
+
+def test_stored_r2_pdf_can_be_reloaded_for_processing(monkeypatch, tmp_path):
+    expected = fake_pdf()
+
+    class FakeClient:
+        def download_file(self, bucket, key, filename):
+            assert (bucket, key) == ("ipo", "rhp/2026/1/hash.pdf")
+            Path(filename).write_bytes(expected)
+
+    monkeypatch.setattr("app.ingestion.rhp_storage._r2_client", lambda settings: FakeClient())
+    settings = Settings(
+        r2_bucket="ipo",
+        r2_endpoint_url="https://account.r2.cloudflarestorage.com",
+        r2_access_key_id="key",
+        r2_secret_access_key="secret",
+    )
+
+    downloaded = _download_stored_pdf(
+        "rhp/2026/1/hash.pdf",
+        hashlib.sha256(expected).hexdigest(),
+        "application/pdf",
+        "https://www.nseindia.com/rhp.pdf",
+        settings,
+    )
+    try:
+        assert downloaded.path.read_bytes() == expected
+        assert downloaded.size_bytes == len(expected)
+    finally:
+        downloaded.cleanup()

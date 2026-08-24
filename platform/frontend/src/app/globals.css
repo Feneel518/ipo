@@ -174,6 +174,99 @@
   .lane-track span { animation: none; }
 }
 
+/* RHP analysis: an editorial research dossier within the IPO detail page. */
+.rhp-analysis { position: relative; padding: clamp(78px, 9vw, 126px) 0; border-top: 1px solid var(--ink); }
+.rhp-analysis::before { content: "RESEARCH / RHP"; position: absolute; top: 22px; right: 0; color: var(--muted); font: 700 .64rem var(--mono); letter-spacing: .12em; }
+.rhp-analysis-heading { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(280px, .5fr); gap: clamp(36px, 8vw, 118px); align-items: end; margin-bottom: clamp(38px, 5vw, 64px); }
+.rhp-analysis-heading h2 { margin-top: 10px; font-size: clamp(3.4rem, 6.5vw, 6.7rem); line-height: .84; letter-spacing: -.062em; }
+.rhp-analysis-heading h2 em { color: var(--orange); font-weight: 400; }
+.rhp-verification { padding: 18px 20px; border-left: 5px solid var(--green); background: var(--green-light); }
+.rhp-verification span, .rhp-verification strong, .rhp-verification a { display: block; }
+.rhp-verification span { color: var(--green); font: 700 .58rem var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.rhp-verification strong { margin-top: 6px; font: 500 1.1rem var(--display); }
+.rhp-verification a { width: max-content; margin-top: 13px; border-bottom: 1px solid currentColor; font: 700 .62rem var(--mono); text-transform: uppercase; }
+.company-brief { display: grid; grid-template-columns: 48px minmax(0, 1.2fr) minmax(290px, .62fr); gap: clamp(22px, 3vw, 44px); padding: clamp(28px, 4vw, 52px); border: 1px solid var(--ink); background: var(--white); box-shadow: 10px 10px 0 var(--paper-deep); }
+.brief-index { color: var(--orange); font: 700 .68rem var(--mono); letter-spacing: .1em; }
+.company-brief .overline { margin: 0 0 10px; }
+.company-brief h3, .financial-ledger h3, .rhp-thesis-grid h3, .rhp-risks h3 { font-size: clamp(2rem, 3.4vw, 3.45rem); line-height: .98; letter-spacing: -.045em; }
+.company-brief h3 { margin: 13px 0 20px; }
+.company-brief > div > p:last-of-type { max-width: 760px; margin: 0; font-size: 1.04rem; line-height: 1.72; }
+.industry-tag { display: inline-block; padding: 4px 8px; color: var(--green); border: 1px solid var(--green); font: 700 .56rem var(--mono); letter-spacing: .07em; text-transform: uppercase; }
+.product-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 25px 0 0; padding: 0; list-style: none; }
+.product-tags li { padding: 6px 10px; background: var(--paper-deep); font: 700 .6rem var(--mono); }
+.rhp-highlights { align-self: stretch; margin: 0; border-top: 1px solid var(--ink); }
+.rhp-highlights div { padding: 17px 0; border-bottom: 1px solid var(--rule); }
+.rhp-highlights dt { color: var(--muted); font: 700 .57rem var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.rhp-highlights dd { margin: 5px 0 2px; font: 500 clamp(1.6rem, 2.6vw, 2.4rem)/1 var(--display); letter-spacing: -.035em; }
+.rhp-highlights small { color: var(--muted); font-size: .68rem; }
+.financial-ledger { margin-top: clamp(48px, 6vw, 78px); border: 1px solid var(--ink); background: rgba(255,253,247,.42); }
+.financial-ledger > header { display: flex; align-items: end; justify-content: space-between; gap: 28px; padding: 28px clamp(22px, 3vw, 38px); color: var(--white); background: var(--ink); }
+.financial-ledger > header > div { display: grid; grid-template-columns: 44px 1fr; }
+.financial-ledger > header .brief-index { grid-row: 1 / 3; padding-top: 5px; color: #efa989; }
+.financial-ledger > header .overline { margin: 0; color: #b9c5be; }
+.financial-ledger > header h3 { color: var(--white); }
+.financial-ledger > header > small { max-width: 220px; color: #b9c5be; font: .6rem/1.5 var(--mono); text-align: right; text-transform: uppercase; }
+.rhp-table-wrap { overflow-x: auto; }
+.rhp-table-wrap table { width: 100%; min-width: 780px; border-collapse: collapse; }
+.rhp-table-wrap th, .rhp-table-wrap td { padding: 18px clamp(14px, 2vw, 26px); border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+.rhp-table-wrap th:last-child, .rhp-table-wrap td:last-child { border-right: 0; }
+.rhp-table-wrap thead th { color: var(--muted); background: var(--paper-deep); font: 700 .57rem var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.rhp-table-wrap thead th:first-child, .rhp-table-wrap tbody th { text-align: left; }
+.rhp-table-wrap tbody th { font: 500 1.2rem var(--display); }
+.rhp-table-wrap tbody td { font: 700 .69rem var(--mono); }
+.rhp-thesis-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: clamp(48px, 6vw, 78px); border: 1px solid var(--ink); background: var(--white); }
+.rhp-thesis-grid > article { min-width: 0; padding: clamp(28px, 4vw, 50px); }
+.rhp-thesis-grid > article + article { border-left: 1px solid var(--ink); }
+.rhp-thesis-grid .thesis-number { color: var(--orange); font: 700 .59rem var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+.rhp-thesis-grid h3 { max-width: 440px; margin: 12px 0 28px; }
+.rhp-thesis-grid ol, .rhp-thesis-grid ul { margin: 0; padding: 0; list-style: none; }
+.rhp-thesis-grid li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; padding: 15px 0; border-top: 1px solid var(--rule); }
+.rhp-thesis-grid li > span { color: var(--orange); font: 700 .62rem var(--mono); }
+.rhp-thesis-grid li p { margin: 0; }
+.rhp-thesis-grid li small { display: block; margin-top: 5px; color: var(--muted); font: .55rem var(--mono); text-transform: uppercase; }
+.growth-case { color: var(--white); background: #416d5a; }
+.growth-case .thesis-number, .growth-case li > span { color: #f2c0aa; }
+.growth-case li { border-color: rgba(255,253,247,.3); }
+.growth-case li small { color: #d3e0d8; }
+.rhp-risks { margin-top: clamp(48px, 6vw, 78px); }
+.rhp-risks > header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .58fr); gap: 40px; align-items: end; padding-bottom: 28px; border-bottom: 1px solid var(--ink); }
+.rhp-risks > header > div { display: grid; grid-template-columns: 44px 1fr; }
+.rhp-risks > header .brief-index { grid-row: 1 / 3; padding-top: 5px; }
+.rhp-risks > header .overline { margin: 0; }
+.rhp-risks > header > p { margin: 0; color: var(--muted); }
+.risk-register details { border-bottom: 1px solid var(--ink); }
+.risk-register summary { display: grid; grid-template-columns: 42px minmax(0, 1fr) 30px; gap: 18px; align-items: center; padding: 22px 0; cursor: pointer; list-style: none; }
+.risk-register summary::-webkit-details-marker { display: none; }
+.risk-register summary > span { color: var(--orange); font: 700 .63rem var(--mono); }
+.risk-register summary div { display: flex; flex-direction: column; }
+.risk-register summary small { color: var(--muted); font: 700 .54rem var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.risk-register summary strong { margin-top: 3px; font: 500 clamp(1.15rem, 1.7vw, 1.45rem)/1.2 var(--display); }
+.risk-register summary i { font: 400 1.5rem var(--display); font-style: normal; transition: transform .2s var(--ease); }
+.risk-register details[open] summary i { transform: rotate(45deg); }
+.risk-register details > p { max-width: 880px; margin: -4px 0 24px 60px; color: var(--muted); line-height: 1.68; }
+
+@media (max-width: 760px) {
+  .rhp-analysis { padding: 72px 0; }
+  .rhp-analysis::before { top: 16px; font-size: .56rem; }
+  .rhp-analysis-heading, .company-brief, .rhp-thesis-grid, .rhp-risks > header { grid-template-columns: 1fr; }
+  .rhp-analysis-heading { gap: 24px; }
+  .rhp-analysis-heading h2 { font-size: clamp(3.4rem, 15vw, 5.1rem); }
+  .company-brief { gap: 18px; padding: 24px 20px; box-shadow: 6px 6px 0 var(--paper-deep); }
+  .company-brief > .brief-index { display: none; }
+  .rhp-highlights { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 8px; }
+  .rhp-highlights div { padding-right: 12px; }
+  .financial-ledger > header { align-items: flex-start; flex-direction: column; }
+  .financial-ledger > header > small { max-width: none; text-align: left; }
+  .rhp-thesis-grid > article + article { border-top: 1px solid var(--ink); border-left: 0; }
+  .rhp-risks > header { gap: 18px; }
+  .risk-register summary { grid-template-columns: 28px minmax(0, 1fr) 22px; gap: 10px; }
+  .risk-register details > p { margin: -2px 0 22px 38px; }
+}
+
+@media (max-width: 390px) {
+  .rhp-highlights { grid-template-columns: 1fr; }
+}
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; color: var(--ink); background: var(--paper); font-family: var(--body); line-height: 1.55; }

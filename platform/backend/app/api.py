@@ -13,7 +13,16 @@ from app.lifecycle import (
     effective_lifecycle,
     effective_lifecycle_expression,
 )
-from app.models import Exchange, ExchangeListing, IngestionRun, Ipo, Lifecycle, Segment
+from app.models import (
+    Exchange,
+    ExchangeListing,
+    IngestionRun,
+    Ipo,
+    IpoDocument,
+    IpoExtractionRun,
+    Lifecycle,
+    Segment,
+)
 from app.offer_math import build_lot_applications, build_reservation_summary
 from app.schemas import (
     CalendarEvent,
@@ -150,6 +159,17 @@ def ipo_detail(slug: str, db: Annotated[Session, Depends(get_db)]) -> IpoDetail:
         for listing in active_listings
         if listing.master_data_last_fetched_at is not None
     ]
+    approved_rhp = db.scalar(
+        select(IpoExtractionRun)
+        .join(IpoDocument, IpoExtractionRun.document_id == IpoDocument.id)
+        .where(
+            IpoDocument.ipo_id == ipo.id,
+            IpoExtractionRun.status.in_(["READY", "APPROVED"]),
+            IpoExtractionRun.raw_json.is_not(None),
+        )
+        .order_by(IpoExtractionRun.completed_at.desc().nullslast(), IpoExtractionRun.id.desc())
+        .limit(1)
+    )
     return IpoDetail(
         **_card(ipo, today=today).model_dump(),
         isin=ipo.isin,
@@ -184,6 +204,9 @@ def ipo_detail(slug: str, db: Annotated[Session, Depends(get_db)]) -> IpoDetail:
         lot_size_applications=build_lot_applications(
             ipo, freshest_listing.segment if freshest_listing else None
         ),
+        rhp_analysis=approved_rhp.raw_json if approved_rhp else None,
+        rhp_analysis_status=approved_rhp.status if approved_rhp else None,
+        rhp_approved_at=approved_rhp.approved_at if approved_rhp else None,
         master_data_last_fetched_at=max(fetched_times, default=None),
         master_data_sources=sorted(
             {
