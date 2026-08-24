@@ -5,7 +5,7 @@ import { AutoRefresh } from "@/components/auto-refresh";
 import { IpoMarketIllustration } from "@/components/ipo-market-illustration";
 import { IpoTimetable } from "@/components/ipo-timetable";
 import { OfferStructure } from "@/components/offer-structure";
-import { RhpAnalysis } from "@/components/rhp-analysis";
+import { CompanyOverview, RhpAnalysis } from "@/components/rhp-analysis";
 import { StatusPill } from "@/components/status-pill";
 import { SubscriptionMomentum } from "@/components/subscription-momentum";
 import { getIpo } from "@/lib/api";
@@ -61,6 +61,7 @@ export default async function IpoPage({ params }: { params: Params }) {
     : ipo.market_type === "FIXED_PRICE"
       ? "Fixed price IPO"
       : humanizeLabel(ipo.issue_type);
+  const rhpSourceUrl = ipo.documents.find((document) => document.document_type.toUpperCase().includes("RHP"))?.url;
 
   const issueFacts = [
     ["IPO date", ipoDates],
@@ -84,6 +85,7 @@ export default async function IpoPage({ params }: { params: Params }) {
           <div className="price-block"><span>Price band</span><strong>{priceBand(ipo.price_low, ipo.price_high)}</strong><small>per equity share</small></div>
         </div>
       </header>
+      {ipo.rhp_analysis && <CompanyOverview analysis={ipo.rhp_analysis} approvedAt={ipo.rhp_approved_at} status={ipo.rhp_analysis_status} sourceUrl={rhpSourceUrl} />}
       <IpoTimetable companyName={companyName} openDate={ipo.open_date} closeDate={ipo.close_date} allotmentDate={ipo.allotment_date} allotmentDateIsEstimated={ipo.allotment_date_is_estimated} refundDate={ipo.refund_date} refundDateIsEstimated={ipo.refund_date_is_estimated} creditDate={ipo.credit_date} creditDateIsEstimated={ipo.credit_date_is_estimated} expectedListingDate={ipo.expected_listing_date} listingDate={ipo.listing_date} initialToday={indiaDateKey()} />
       <div className="detail-grid">
         <section className="issue-facts-panel"><div className="issue-facts-heading"><div><p className="overline">Issue facts</p><h2>Key IPO details</h2></div><span aria-hidden="true">08 / essentials</span></div><dl className="fact-table fact-table-complete" aria-label={`${companyName} key IPO details`}>
@@ -104,12 +106,7 @@ export default async function IpoPage({ params }: { params: Params }) {
         </aside>
       </div>
       <OfferStructure ipo={ipo} latestSubscriptions={latest} />
-      {ipo.rhp_analysis && <RhpAnalysis
-        analysis={ipo.rhp_analysis}
-        approvedAt={ipo.rhp_approved_at}
-        status={ipo.rhp_analysis_status}
-        sourceUrl={ipo.documents.find((document) => document.document_type.toUpperCase().includes("RHP"))?.url}
-      />}
+      {ipo.rhp_analysis && <RhpAnalysis analysis={ipo.rhp_analysis} />}
       {ipo.lifecycle === "OPEN" && <section className="live-book" id="demand-book">
         <header className="live-book-heading">
           <div><p className="overline">Live issue demand</p><h2>The book,<br /><em>in motion.</em></h2><p>Follow subscription as confirmed exchange bids enter the book.</p></div>
