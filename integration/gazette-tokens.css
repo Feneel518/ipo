@@ -1,0 +1,38 @@
+/* Additive token block for platform/frontend.
+   Append to the gazette :root at src/app/globals.css line ~1047 (the block that
+   starts "Gazette redesign — shared language from the supplied design file").
+   Everything here is a value already hardcoded somewhere in that stylesheet;
+   this gives each one a name so it stops being a literal. */
+
+:root {
+  /* already in your file — unchanged, listed for completeness
+  --paper: #f7f4ea;
+  --paper-deep: #e9e5d7;
+  --ink: #171512;
+  --muted: #5c5648;
+  --rule: #cfc8b4;
+  --orange: #8c2f1d;   (vermillion; the system's only accent)
+  */
+
+  /* graded ink — currently written as raw hex in ~14 rules */
+  --ink-2: #2c2822;    /* replaces #2c2822 in .lead-story, .about-columns p */
+  --ink-3: #3b362c;    /* replaces #3b362c in .brand small, .masthead-source, .gazette-briefs p, .gazette-intro, .gazette-book header p, .book-method p */
+  --ink-4: #4a4438;    /* replaces #4a4438 in .lead-ledger > p, .gazette-footnote, .lead-subscriptions > p */
+  --ink-faint: #8c8264; /* row indices, input placeholders */
+
+  /* input paper — replaces the literal #fdfbf4 in .allotment-fields */
+  --field: #fdfbf4;
+
+  /* reversed panels, for the RHP financial table */
+  --on-ink: #f7f4ea;
+  --on-ink-muted: #a39a83;
+  --on-ink-rule: #3b362c;
+
+  /* the desk ground, if you ever restore the floating sheet (see the guide) */
+  --desk: #ddd6c4;
+}
+
+/* --orange-light: #ead5cd is not in the design system — the system tints with
+   --paper-deep only. Retire it (2 remaining uses) rather than keeping a second
+   accent tint. Same for --green / --green-light, which you already aliased to
+   ink and paper-deep: delete the aliases once the legacy classes below go. */

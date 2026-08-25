@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     rhp_chunk_max_pages: int = 300
     gemini_api_key: str | None = None
     rhp_primary_model: str = "gemini-3.5-flash-lite"
-    rhp_prompt_version: str = "rhp-v1.7"
+    rhp_prompt_version: str = "rhp-v1.8"
     rhp_schema_version: str = "rhp-v1.1"
     rhp_extraction_batch_size: int = 5
     rhp_extraction_max_attempts: int = 3

@@ -9,6 +9,7 @@ Use `[x]` for completed work and `[ ]` for work that is still pending. Update th
 - [x] Home page with open, upcoming, and recently listed IPOs
 - [x] Searchable and filterable IPO directory
 - [x] Individual IPO detail pages
+- [x] Calculated RHP investor metrics on IPO detail pages
 - [x] IPO dates, price band, lot size, issue size, and exchange details
 - [x] Live subscription breakdown by investor category
 - [x] Subscription momentum chart and calculation notes
@@ -32,6 +33,7 @@ Use `[x]` for completed work and `[ ]` for work that is still pending. Update th
 - [x] Canonical RHP PDF archiving to Cloudflare R2 (without ZIP retention)
 - [x] PDF inspection, structural optimization, byte-aware splitting, and original-page mapping
 - [x] Versioned Gemini extraction jobs/runs with raw JSON, usage, retries, and canonical metrics
+- [x] Deterministic v2 CAGR, margin, leverage, cash-conversion, and working-capital metrics
 - [x] Single-file Gemini extraction worker for original and optimized RHPs
 - [x] Validate the Gemini happy path against five real ordinary RHPs
 - [x] Auditable RHP warning review and approval workflow

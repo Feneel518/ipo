@@ -13,6 +13,7 @@ dependencies = [
   "google-genai==2.19.0",
   "google-cloud-storage>=3.2,<4",
   "httpx>=0.28,<1",
+  "json-repair>=0.52,<1",
   "psycopg[binary,pool]>=3.2,<4",
   "pydantic-settings>=2.10,<3",
   "pikepdf>=9,<11",

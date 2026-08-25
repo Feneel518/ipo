@@ -2,22 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { AllotmentChanceMarquee } from "@/components/allotment-chance-marquee";
 import { IpoTimetable } from "@/components/ipo-timetable";
 import { ApplicationSizes, ReservedPools } from "@/components/offer-structure";
-import { RememberIpoRecord } from "@/components/remember-ipo-record";
 import { CompanyOverview, RhpAnalysis } from "@/components/rhp-analysis";
 import { getIpo } from "@/lib/api";
 import { displayCompanyName, displayDate, humanizeLabel, money, priceBand } from "@/lib/format";
 
 type Params = Promise<{ slug: string }>;
-
-// Create IPO records on demand, then keep the rendered result in ISR. This
-// avoids prebuilding hundreds of records while making repeat visits CDN-fast.
-export const revalidate = 300;
-export async function generateStaticParams() {
-  return [];
-}
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
@@ -89,12 +80,11 @@ export default async function IpoPage({ params }: { params: Params }) {
   return (
     <article className="record">
       <AutoRefresh />
-      <RememberIpoRecord slug={slug} />
       <nav className="breadcrumbs" aria-label="Breadcrumb">
         <Link href="/ipos">Directory</Link><span>/</span><span aria-current="page">{companyName}</span>
       </nav>
 
-      <header className={`record-head${overallLabel ? " record-head-with-subscription" : ""}`}>
+      <header className="record-head">
         <div>
           <h1>{companyName}</h1>
           <p className="record-meta">{humanizeLabel(ipo.lifecycle)} · {listingAt} · {issueType}</p>
@@ -104,23 +94,12 @@ export default async function IpoPage({ params }: { params: Params }) {
           <strong>{priceBand(ipo.price_low, ipo.price_high)}</strong>
           <small>per equity share · lot of {ipo.lot_size?.toLocaleString("en-IN") ?? "TBA"}</small>
         </div>
-        {overallLabel && <Link
-          className="record-band record-subscription"
-          href={`/subscriptions?ipo=${encodeURIComponent(ipo.slug)}`}
-          aria-label={`View ${companyName} subscription details, overall subscribed ${overallLabel} times`}
-        >
-          <span>Overall subscribed</span>
-          <strong>{overallLabel}×</strong>
-          <small>View subscription tape →</small>
-        </Link>}
       </header>
-
-      <AllotmentChanceMarquee ipo={ipo} latestSubscriptions={latest} />
 
       {ipo.rhp_analysis && <CompanyOverview analysis={ipo.rhp_analysis} approvedAt={ipo.rhp_approved_at} status={ipo.rhp_analysis_status} sourceUrl={rhpSourceUrl} />}
 
       <div className="record-columns">
-        <div className={ipo.lot_size_applications?.length ? "record-tables record-tables-balanced" : "record-tables"}>
+        <div>
           <IpoTimetable
             companyName={companyName}
             openDate={ipo.open_date}
@@ -164,7 +143,7 @@ export default async function IpoPage({ params }: { params: Params }) {
 
       <ReservedPools ipo={ipo} latestSubscriptions={latest} />
 
-      {ipo.rhp_analysis && <RhpAnalysis analysis={ipo.rhp_analysis} calculatedMetrics={ipo.rhp_calculated_metrics} />}
+      {ipo.rhp_analysis && <RhpAnalysis analysis={ipo.rhp_analysis} />}
 
       <div className="demand-strip">
         <div>
@@ -174,7 +153,7 @@ export default async function IpoPage({ params }: { params: Params }) {
         </div>
         <div>
           <strong>{overallLabel ? `${overallLabel}×` : "—"}</strong>
-          <Link href={`/subscriptions?ipo=${encodeURIComponent(ipo.slug)}`}>Full subscription tape →</Link>
+          <Link href="/subscription">Full subscription tape →</Link>
         </div>
       </div>
     </article>

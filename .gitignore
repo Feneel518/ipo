@@ -25,6 +25,9 @@
 *.log
 **/*.log
 .codex-screenshots/
+.tmp-*/
+.tmp-*.png
+/tempsens-current-page.png
 
 # Editors and operating systems
 .DS_Store

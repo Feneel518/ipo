@@ -12,6 +12,18 @@ from app.services.rhp.schema import (
 )
 
 MONEY_UNITS = {"INR", "INR_LAKH", "INR_CRORE", "INR_MILLION"}
+CANONICAL_CRORE_METRICS = {
+    "revenue_from_operations",
+    "profit_after_tax",
+    "finance_cost",
+    "operating_cash_flow",
+    "trade_receivables",
+    "total_borrowings",
+    "total_equity",
+    "fresh_issue_amount",
+    "offer_for_sale_amount",
+    "total_issue_amount",
+}
 
 
 @dataclass(frozen=True)
@@ -23,6 +35,7 @@ class CanonicalMetric:
     unit: str | None
     status: str
     provenance: list[dict] | None
+    source: str = "RHP"
 
 
 @dataclass(frozen=True)
@@ -139,7 +152,35 @@ def _numeric_value_supported(name: str, fact: NumericFact) -> bool:
         return fact.unit == "PERCENT" and _explicit_zero_pledge(evidence)
     expected = Decimal(str(fact.value))
     tolerance = max(Decimal("0.005"), abs(expected) * Decimal("0.000001"))
-    return any(abs(candidate - expected) <= tolerance for candidate in _evidence_numbers(evidence))
+    candidates = _evidence_numbers(evidence)
+    if any(abs(candidate - expected) <= tolerance for candidate in candidates):
+        return True
+    # Gemini returns canonical crores while its evidence remains a verbatim source
+    # excerpt. Accept the corresponding printed value when the excerpt identifies
+    # the original Indian money unit.
+    if fact.unit == "INR_CRORE":
+        source_multiplier = None
+        if re.search(r"\b(?:inr|rupees?|rs\.?)?\s*(?:in\s+)?millions?\b", evidence, re.I):
+            source_multiplier = Decimal("10")
+        elif re.search(r"\b(?:inr|rupees?|rs\.?)?\s*(?:in\s+)?lakhs?\b", evidence, re.I):
+            source_multiplier = Decimal("100")
+        if source_multiplier is not None:
+            source_expected = expected * source_multiplier
+            source_tolerance = max(Decimal("0.005"), abs(source_expected) * Decimal("0.000001"))
+            return any(
+                abs(candidate - source_expected) <= source_tolerance for candidate in candidates
+            )
+    return False
+
+
+def _money_in_crore(value: Decimal, unit: str) -> Decimal:
+    if unit == "INR_MILLION":
+        return value / Decimal("10")
+    if unit == "INR_LAKH":
+        return value / Decimal("100")
+    if unit == "INR":
+        return value / Decimal("10000000")
+    return value
 
 
 def _borrowings_use_only_components(name: str, fact: NumericFact) -> bool:
@@ -434,12 +475,17 @@ def _numeric(
             status=FieldStatus.AMBIGUOUS.value,
             provenance=_provenance(fact),
         )
+    numeric_value = Decimal(str(fact.value)) if fact.value is not None else None
+    unit = fact.unit
+    if numeric_value is not None and metric in CANONICAL_CRORE_METRICS and unit in MONEY_UNITS:
+        numeric_value = _money_in_crore(numeric_value, unit)
+        unit = "INR_CRORE"
     return CanonicalMetric(
         metric=metric,
         financial_year=financial_year,
-        numeric_value=Decimal(str(fact.value)) if fact.value is not None else None,
+        numeric_value=numeric_value,
         text_value=None,
-        unit=fact.unit,
+        unit=unit,
         status=fact.status.value,
         provenance=_provenance(fact),
     )

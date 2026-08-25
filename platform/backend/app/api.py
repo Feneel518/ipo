@@ -19,6 +19,7 @@ from app.models import (
     IngestionRun,
     Ipo,
     IpoDocument,
+    IpoExtractionJob,
     IpoExtractionRun,
     Lifecycle,
     Segment,
@@ -30,10 +31,20 @@ from app.schemas import (
     IpoDetail,
     IpoPage,
     PageMeta,
+    RhpApprovalIn,
+    RhpReviewIn,
+    RhpReviewQueueOut,
+    RhpReviewRunOut,
     SummaryOut,
 )
+from app.services.rhp.approval import approve_extraction_run, review_extraction_run
 
 router = APIRouter(prefix="/api/v1")
+
+
+def _require_internal_token(authorization: str | None, settings: Settings) -> None:
+    if authorization != f"Bearer {settings.internal_api_token}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 def _card(ipo: Ipo, *, today: date | None = None) -> IpoCard:
@@ -161,6 +172,7 @@ def ipo_detail(slug: str, db: Annotated[Session, Depends(get_db)]) -> IpoDetail:
     ]
     approved_rhp = db.scalar(
         select(IpoExtractionRun)
+        .options(selectinload(IpoExtractionRun.metrics))
         .join(IpoDocument, IpoExtractionRun.document_id == IpoDocument.id)
         .where(
             IpoDocument.ipo_id == ipo.id,
@@ -205,6 +217,14 @@ def ipo_detail(slug: str, db: Annotated[Session, Depends(get_db)]) -> IpoDetail:
             ipo, freshest_listing.segment if freshest_listing else None
         ),
         rhp_analysis=approved_rhp.raw_json if approved_rhp else None,
+        rhp_calculated_metrics=(
+            sorted(
+                (metric for metric in approved_rhp.metrics if metric.source == "CALCULATED"),
+                key=lambda metric: (metric.metric, metric.financial_year or ""),
+            )
+            if approved_rhp
+            else []
+        ),
         rhp_analysis_status=approved_rhp.status if approved_rhp else None,
         rhp_approved_at=approved_rhp.approved_at if approved_rhp else None,
         master_data_last_fetched_at=max(fetched_times, default=None),
@@ -318,8 +338,7 @@ def ingestion_status(
     settings: Annotated[Settings, Depends(get_settings)],
     authorization: Annotated[str | None, Header()] = None,
 ) -> list[dict[str, object]]:
-    if authorization != f"Bearer {settings.internal_api_token}":
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    _require_internal_token(authorization, settings)
     rows = db.scalars(select(IngestionRun).order_by(IngestionRun.started_at.desc()).limit(20)).all()
     return [
         {
@@ -333,3 +352,99 @@ def ingestion_status(
         }
         for row in rows
     ]
+
+
+@router.get(
+    "/internal/rhp-reviews",
+    response_model=RhpReviewQueueOut,
+    include_in_schema=False,
+)
+def rhp_review_queue(
+    db: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    authorization: Annotated[str | None, Header()] = None,
+) -> RhpReviewQueueOut:
+    _require_internal_token(authorization, settings)
+    statuses = ["READY_WITH_WARNINGS", "REVIEWED", "FAILED", "READY", "APPROVED"]
+    counts = {
+        status: db.scalar(
+            select(func.count(IpoExtractionJob.id)).where(IpoExtractionJob.status == status)
+        )
+        or 0
+        for status in statuses
+    }
+    rows = db.scalars(
+        select(IpoExtractionRun)
+        .options(
+            selectinload(IpoExtractionRun.document).selectinload(IpoDocument.ipo),
+        )
+        .where(IpoExtractionRun.status.in_(["READY_WITH_WARNINGS", "REVIEWED", "FAILED"]))
+        .order_by(IpoExtractionRun.completed_at.desc().nullslast(), IpoExtractionRun.id.desc())
+        .limit(100)
+    ).all()
+    newest_by_job: dict[int, IpoExtractionRun] = {}
+    for run in rows:
+        newest_by_job.setdefault(run.job_id, run)
+    return RhpReviewQueueOut(
+        counts=counts,
+        data=[
+            RhpReviewRunOut(
+                run_id=run.id,
+                job_id=run.job_id,
+                document_id=run.document_id,
+                ipo_id=run.document.ipo_id,
+                company_name=run.document.ipo.company_name,
+                ipo_slug=run.document.ipo.slug,
+                status=run.status,
+                model=run.model,
+                prompt_version=run.prompt_version,
+                schema_version=run.schema_version,
+                validation_issues=run.validation_issues or [],
+                review_resolutions=run.review_resolutions or [],
+                raw_json=run.raw_json,
+                error_code=run.error_code,
+                error_message=run.error_message,
+                started_at=run.started_at,
+                completed_at=run.completed_at,
+                reviewed_at=run.reviewed_at,
+                reviewed_by=run.reviewed_by,
+                approved_at=run.approved_at,
+                approved_by=run.approved_by,
+            )
+            for run in newest_by_job.values()
+        ],
+    )
+
+
+@router.post("/internal/rhp-reviews/{run_id}/review", include_in_schema=False)
+def review_rhp_run(
+    run_id: int,
+    payload: RhpReviewIn,
+    settings: Annotated[Settings, Depends(get_settings)],
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, object]:
+    _require_internal_token(authorization, settings)
+    try:
+        review_extraction_run(
+            run_id,
+            reviewer=payload.reviewer,
+            resolutions=[item.model_dump() for item in payload.resolutions],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"run_id": run_id, "status": "REVIEWED"}
+
+
+@router.post("/internal/rhp-reviews/{run_id}/approve", include_in_schema=False)
+def approve_rhp_run(
+    run_id: int,
+    payload: RhpApprovalIn,
+    settings: Annotated[Settings, Depends(get_settings)],
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, object]:
+    _require_internal_token(authorization, settings)
+    try:
+        approve_extraction_run(run_id, approver=payload.approver)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"run_id": run_id, "status": "APPROVED"}

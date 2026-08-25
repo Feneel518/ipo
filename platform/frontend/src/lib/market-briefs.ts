@@ -55,7 +55,29 @@ function issueSize(ipo: LeadCandidate) {
   return Number.isFinite(value) ? value : -1;
 }
 
+function overallSubscription(ipo: LeadCandidate) {
+  const subscriptions = ipo.subscriptions ?? [];
+  const latestCaptured = subscriptions.reduce(
+    (latest, row) => row.captured_at > latest ? row.captured_at : latest,
+    "",
+  );
+  const overall = subscriptions.find((row) =>
+    row.captured_at === latestCaptured && /^(total|overall)$/i.test(row.category),
+  );
+  if (overall?.calculated_subscription == null) return null;
+  const value = Number(overall?.calculated_subscription);
+  return Number.isFinite(value) ? value : null;
+}
+
 function compareLeadPriority(left: LeadCandidate, right: LeadCandidate) {
+  const leftSubscription = overallSubscription(left);
+  const rightSubscription = overallSubscription(right);
+  if (leftSubscription != null || rightSubscription != null) {
+    if (leftSubscription == null) return 1;
+    if (rightSubscription == null) return -1;
+    const subscriptionDifference = rightSubscription - leftSubscription;
+    if (subscriptionDifference) return subscriptionDifference;
+  }
   if (hasLiveSubscriptions(left) !== hasLiveSubscriptions(right)) return hasLiveSubscriptions(left) ? -1 : 1;
   if (hasLiveSubscriptions(left)) {
     const sizeDifference = issueSize(right) - issueSize(left);

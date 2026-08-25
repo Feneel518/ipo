@@ -7,7 +7,7 @@ import { Line, LineChart } from "@/components/charts/line-chart";
 import { ReferenceArea } from "@/components/charts/reference-area";
 import { ChartTooltip } from "@/components/charts/tooltip";
 import { XAxis } from "@/components/charts/x-axis";
-import type { Subscription, SubscriptionMomentumRow } from "@/lib/types";
+import type { SubscriptionMomentumRow } from "@/lib/types";
 
 const chartCategories = ["TOTAL", "RETAIL", "NII", "QIB"] as const;
 const categoryLabels: Record<string, string> = {
@@ -56,8 +56,8 @@ function quantityLabel(value: number) {
 
 interface SubscriptionMomentumProps {
   subscriptions: SubscriptionMomentumRow[];
-  exchange?: Subscription["exchange"];
-  scope?: Subscription["bid_data_scope"];
+  exchange?: SubscriptionMomentumRow["exchange"];
+  scope?: SubscriptionMomentumRow["bid_data_scope"];
 }
 
 export function SubscriptionMomentum({ subscriptions, exchange, scope }: SubscriptionMomentumProps) {
@@ -69,7 +69,7 @@ export function SubscriptionMomentum({ subscriptions, exchange, scope }: Subscri
         && Number.isFinite(Number(item.calculated_subscription)))
       .sort((left, right) => Date.parse(right.observed_at) - Date.parse(left.observed_at));
 
-    const latestRevision = new Map<string, Subscription>();
+    const latestRevision = new Map<string, SubscriptionMomentumRow>();
     for (const item of revisions) {
       const key = `${item.captured_at}:${item.category}`;
       if (!latestRevision.has(key)) latestRevision.set(key, item);
@@ -116,7 +116,7 @@ export function SubscriptionMomentum({ subscriptions, exchange, scope }: Subscri
       <div className="demand-chart" aria-label={`${categories.map((category) => categoryLabels[category]).join(", ")} subscription multiples across ${checkpoints.length} stored exchange checkpoints`}>
         <span className="demand-axis-label" aria-hidden="true">Subscription (×)</span>
         <span className="demand-threshold-label" aria-hidden="true">Below 1×</span>
-        <LineChart aspectRatio="16 / 5" data={fullData} dateLabelKey="capturedAtLabel" margin={{ top: 28, right: 24, bottom: 42, left: 24 }} xDataKey="date" yDomainTween>
+        <LineChart aspectRatio="16 / 5" className="demand-chart-canvas" data={fullData} dateLabelKey="capturedAtLabel" margin={{ top: 28, right: 24, bottom: 42, left: 24 }} xDataKey="date" yDomainTween>
           <Grid horizontal />
           <ReferenceArea axisLabelColor="var(--orange)" fadeEdges fadeEdgesLength={10} fill="rgba(140,47,29,.07)" fillOpacity={1} pattern="none" patternColor="var(--rule)" stroke="rgba(140,47,29,.55)" strokeDasharray="4,4" strokeStyle="dashed" y1={0} y2={1} yAxisId="left" />
           {categories.map((category) => <Line dataKey={category} key={category} stroke={categoryColors[category]} strokeWidth={category === "TOTAL" ? 3 : 2} />)}

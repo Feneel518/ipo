@@ -57,6 +57,10 @@ Copy the corresponding `.env.example` file before starting each service.
 - When all `R2_*` variables are configured, RHPs for upcoming and open IPOs are validated and
   copied to Cloudflare R2 after exchange data commits. Archive failures are tracked per document and do not
   roll back IPO ingestion.
+- When `GEMINI_API_KEY` is also configured on the ingestion job, a newly stored RHP for an upcoming
+  or open IPO is immediately queued and extracted. Runs with no newly stored RHP do not invoke
+  Gemini. A separate extraction cron may be added for throughput or scheduled retries; durable jobs
+  and row locks prevent duplicate paid work.
 - After Gemini extraction data commits successfully, its worker must call the R2 cleanup operation,
   which deletes the source PDF and retains only its hash and storage timestamps for auditability.
 - Exchange ZIP responses are temporary transport only. The archive stores the extracted,

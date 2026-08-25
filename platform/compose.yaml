@@ -50,6 +50,8 @@ services:
       DATABASE_URL: postgresql+psycopg://ipodekho:ipodekho@postgres:5432/ipodekho
       REVALIDATION_URL: http://web:3000/api/revalidate
       REVALIDATION_SECRET: local-revalidation-secret
+      # Add GEMINI_API_KEY and the four R2_* variables to run the complete
+      # archive -> prepare -> Gemini extraction pipeline automatically.
     command: ["ipo-ingest"]
     depends_on:
       migrate: { condition: service_completed_successfully }

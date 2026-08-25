@@ -10,6 +10,7 @@ from typing import Any
 
 from google import genai
 from google.genai import types
+from json_repair import repair_json
 
 from app.config import Settings
 from app.services.rhp.prompts import RHP_EXTRACTION_PROMPT_V1
@@ -63,6 +64,16 @@ class GeminiRequestError(RuntimeError):
         self.input_tokens = input_tokens
         self.output_tokens = output_tokens
         self.request_count = request_count
+
+
+def _parse_json_object(value: str) -> tuple[dict[str, Any] | None, bool]:
+    """Parse model JSON, conservatively repairing transport-level syntax damage."""
+    try:
+        candidate = json.loads(value)
+        return (candidate if isinstance(candidate, dict) else None), False
+    except (TypeError, json.JSONDecodeError):
+        repaired = repair_json(value, return_objects=True)
+        return (repaired if isinstance(repaired, dict) else None), True
 
 
 @dataclass(frozen=True)
@@ -344,13 +355,12 @@ def extract_rhp_v1(
                 "output_tokens": total_output_tokens if output_usage_available else None,
             }
             partial_json = None
+            repaired_json = False
             parse_error: Exception | None = None
             if response.text:
                 try:
-                    candidate = json.loads(response.text)
-                    if isinstance(candidate, dict):
-                        partial_json = candidate
-                except (TypeError, json.JSONDecodeError) as exc:
+                    partial_json, repaired_json = _parse_json_object(response.text)
+                except Exception as exc:
                     parse_error = exc
             if partial_json is not None:
                 _truncate_bounded_lists(partial_json, warnings=transport_warnings)
@@ -361,6 +371,10 @@ def extract_rhp_v1(
                 except Exception as exc:
                     parse_error = exc
                 else:
+                    if repaired_json:
+                        transport_warnings.append(
+                            f"Repaired malformed JSON returned by Gemini for the {pass_name} pass"
+                        )
                     raw_json.update(partial_json)
                     pass_completed = True
                     break

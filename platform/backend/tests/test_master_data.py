@@ -206,6 +206,7 @@ def test_due_logic_and_api_contract_fields():
         "reservation_summary",
         "lot_size_applications",
         "rhp_analysis",
+        "rhp_calculated_metrics",
         "rhp_analysis_status",
         "rhp_approved_at",
         "master_data_last_fetched_at",

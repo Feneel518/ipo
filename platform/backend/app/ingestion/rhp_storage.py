@@ -360,7 +360,11 @@ async def delete_archived_rhp(document_id: int) -> bool:
     return True
 
 
-async def archive_pending_rhps(document_ids: set[int] | None = None) -> tuple[int, int]:
+async def archive_pending_rhps(
+    document_ids: set[int] | None = None,
+    *,
+    ready_document_ids: set[int] | None = None,
+) -> tuple[int, int]:
     """Archive a small post-ingestion batch without coupling R2 health to exchange data."""
     settings = get_settings()
     if not settings.r2_configuration_requested:
@@ -595,6 +599,13 @@ async def archive_pending_rhps(document_ids: set[int] | None = None) -> tuple[in
                     document.pdf_processing_error = None
                 document.pdf_processing_prepared_at = datetime.now(UTC)
                 db.commit()
+            if (
+                ready_document_ids is not None
+                and prepared_files
+                and not inspection_error
+                and not preparation_error
+            ):
+                ready_document_ids.add(document_id)
             stored += 1
         except Exception as exc:
             status = (

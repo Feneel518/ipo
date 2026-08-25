@@ -5,6 +5,7 @@ import sys
 
 from app.services.rhp.extraction import (
     process_extraction_batch,
+    refresh_calculated_metrics,
     requeue_extraction,
     revalidate_stored_extractions,
 )
@@ -24,6 +25,11 @@ def main() -> None:
         "--revalidate-prompt-version",
         help="Rebuild canonical rows for completed runs from their stored raw JSON",
     )
+    parser.add_argument(
+        "--refresh-calculated-metrics",
+        action="store_true",
+        help="Refresh derived metrics without changing reported facts or review state",
+    )
     args = parser.parse_args()
     logging.basicConfig(
         level=logging.INFO,
@@ -32,7 +38,22 @@ def main() -> None:
         ),
     )
     try:
-        if args.revalidate_prompt_version:
+        if args.refresh_calculated_metrics:
+            if (
+                args.revalidate_prompt_version
+                or args.rerun_document_id
+                or args.document_id is not None
+                or args.limit is not None
+            ):
+                parser.error("--refresh-calculated-metrics cannot be combined with other options")
+            refreshed_runs, calculated_rows = refresh_calculated_metrics()
+            logging.info(
+                "rhp_calculated_metrics_refreshed runs=%s rows=%s",
+                refreshed_runs,
+                calculated_rows,
+            )
+            sys.exit(0)
+        elif args.revalidate_prompt_version:
             if args.rerun_document_id or args.document_id is not None or args.limit is not None:
                 parser.error(
                     "--revalidate-prompt-version cannot be combined with extraction options"

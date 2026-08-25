@@ -695,7 +695,11 @@ async def _revalidate() -> None:
         response.raise_for_status()
 
 
-async def run_ingestion(year: int | None = None) -> bool:
+async def run_ingestion(
+    year: int | None = None,
+    *,
+    ready_rhp_document_ids: set[int] | None = None,
+) -> bool:
     selected_year = year or datetime.now(IST).year
     with SessionLocal() as lock_db:
         acquired = lock_db.scalar(text("SELECT pg_try_advisory_lock(:id)"), {"id": LOCK_ID})
@@ -708,7 +712,9 @@ async def run_ingestion(year: int | None = None) -> bool:
                 results.append(await ingest_exchange(adapter, selected_year))
             if any(results):
                 try:
-                    stored, failed = await archive_pending_rhps()
+                    stored, failed = await archive_pending_rhps(
+                        ready_document_ids=ready_rhp_document_ids
+                    )
                     if stored or failed:
                         logger.info(
                             "rhp_archive_batch_finished",

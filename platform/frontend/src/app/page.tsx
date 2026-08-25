@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { getAllIpos, getIpo, getIpos, getSummary } from "@/lib/api";
 import { displayCompanyName, displayDate, indiaDateKey, priceBand } from "@/lib/format";
-import { firstDayBrief, leadCandidatePool, leadIssueDeck, leadIssueStory, nextInLineBrief, onTheClockBrief, selectLeadIssue, sortUpcoming } from "@/lib/market-briefs";
+import { firstDayBrief, leadIssueDeck, leadIssueStory, nextInLineBrief, onTheClockBrief, selectLeadIssue, sortUpcoming } from "@/lib/market-briefs";
 import type { IpoCardData, IpoDetailData, Subscription } from "@/lib/types";
 
 function market(ipo: IpoCardData) {
@@ -34,11 +34,9 @@ export default async function Home() {
   ]);
   const open = openResult.data;
   const upcoming = sortUpcoming(upcomingResult.data);
-  const leadCandidates = leadCandidatePool(open);
-  const openHydrationPool = [...new Map([...leadCandidates, ...open].map((ipo) => [ipo.id, ipo])).values()];
-  const hydratedOpen = await Promise.all(openHydrationPool.map(async (ipo) => await getIpo(ipo.slug)));
+  const hydratedOpen = await Promise.all(open.map(async (ipo) => await getIpo(ipo.slug)));
   const openDetails = new Map(hydratedOpen.flatMap((ipo) => ipo ? [[ipo.id, ipo] as const] : []));
-  const hydratedOpenLeadCandidates = leadCandidates.map((ipo) => openDetails.get(ipo.id) ?? ipo);
+  const hydratedOpenLeadCandidates = open.map((ipo) => openDetails.get(ipo.id) ?? ipo);
   const lead = selectLeadIssue(hydratedOpenLeadCandidates, upcoming);
   const hydratedLead = hydratedOpenLeadCandidates.find((ipo) => ipo.id === lead?.id);
   const leadDetail: IpoDetailData | null = hydratedLead && "subscriptions" in hydratedLead

@@ -1,4 +1,4 @@
-import type { RhpAnalysis as RhpAnalysisData, RhpNumericFact, RhpTextFact } from "@/lib/types";
+import type { RhpAnalysis as RhpAnalysisData, RhpCalculatedMetric, RhpNumericFact, RhpTextFact } from "@/lib/types";
 
 const financialColumns = [
   ["Revenue", "revenue_from_operations"],
@@ -7,6 +7,42 @@ const financialColumns = [
   ["Borrowings", "total_borrowings"],
   ["Net worth", "total_equity"],
 ] as const;
+
+const calculatedMetricLabels: Record<string, { label: string; note: string }> = {
+  sales_cagr: { label: "Sales CAGR", note: "Annualised growth" },
+  pat_cagr: { label: "PAT CAGR", note: "Annualised growth" },
+  pat_margin: { label: "PAT margin", note: "Profit / revenue" },
+  debt_to_equity: { label: "Debt / equity", note: "Borrowings / equity" },
+  cash_conversion: { label: "Cash conversion", note: "Operating cash flow / PAT" },
+  receivables_to_revenue: { label: "Receivables / revenue", note: "Working-capital intensity" },
+  revenue_growth: { label: "Revenue growth", note: "Year on year" },
+  receivable_trend: { label: "Receivable trend", note: "Ratio change, year on year" },
+};
+
+const calculatedMetricOrder = Object.keys(calculatedMetricLabels);
+
+function periodRank(period: string | null) {
+  if (!period) return 0;
+  const years = period.match(/(?:19|20)\d{2}/g)?.map(Number) ?? [];
+  return Math.max(0, ...years);
+}
+
+function calculatedNumberLabel(metric: RhpCalculatedMetric) {
+  if (metric.numeric_value == null) return "—";
+  const value = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(Number(metric.numeric_value));
+  if (metric.unit === "PERCENT") return `${value}%`;
+  if (metric.unit === "RATIO") return `${value}×`;
+  return value;
+}
+
+function displayCalculatedMetrics(metrics: RhpCalculatedMetric[]) {
+  return calculatedMetricOrder.flatMap((name) => {
+    const latest = metrics
+      .filter((metric) => metric.metric === name && metric.status === "FOUND" && metric.numeric_value != null)
+      .sort((left, right) => periodRank(right.financial_year) - periodRank(left.financial_year))[0];
+    return latest ? [latest] : [];
+  });
+}
 
 function foundText(fact: RhpTextFact) {
   return fact.status === "FOUND" ? fact.value : null;
@@ -35,11 +71,14 @@ function sourcePage(fact: RhpTextFact | RhpNumericFact) {
   return source.document_page_label ? `RHP p. ${source.document_page_label}` : source.pdf_page ? `PDF p. ${source.pdf_page}` : null;
 }
 
-export function RhpAnalysis({ analysis }: { analysis: RhpAnalysisData }) {
+export function RhpAnalysis({ analysis, calculatedMetrics = [] }: { analysis: RhpAnalysisData; calculatedMetrics?: RhpCalculatedMetric[] }) {
   const strengths = analysis.company.competitive_strengths.filter(foundText);
   const drivers = analysis.company.growth_drivers.filter(foundText);
   const objects = analysis.ipo.objects_of_issue.filter(foundText);
   const growth = [...strengths, ...drivers].slice(0, 8);
+  const visibleCalculatedMetrics = displayCalculatedMetrics(calculatedMetrics);
+  const leadCalculatedMetrics = visibleCalculatedMetrics.filter((metric) => metric.metric.endsWith("_cagr"));
+  const supportingCalculatedMetrics = visibleCalculatedMetrics.filter((metric) => !metric.metric.endsWith("_cagr"));
 
   return (
     <section className="dossier" aria-labelledby="dossier-title">
@@ -62,6 +101,39 @@ export function RhpAnalysis({ analysis }: { analysis: RhpAnalysisData }) {
           </tr>)}</tbody>
         </table>
       </article>}
+
+      {visibleCalculatedMetrics.length > 0 && <section className="calculated-lens" aria-labelledby="calculated-lens-title">
+        <header>
+          <div>
+            <p className="section-folio"><span>Analysis desk</span> Derived financials</p>
+            <h3 id="calculated-lens-title">What the reported<br /><em>numbers reveal.</em></h3>
+          </div>
+          <p>Calculated deterministically from validated RHP figures. These are analytical ratios, not issuer-reported KPIs.</p>
+        </header>
+        <div className="calculated-spread">
+          {leadCalculatedMetrics.length > 0 && <dl className="calculated-leads" aria-label="Long-term growth rates">
+            {leadCalculatedMetrics.map((metric) => {
+            const copy = calculatedMetricLabels[metric.metric];
+            return <div className="calculated-lead" key={metric.metric}>
+              <dt>{copy.label}</dt>
+              <dd>{calculatedNumberLabel(metric)}</dd>
+              <small>{metric.financial_year ?? "All reported periods"} · {copy.note}</small>
+            </div>;
+            })}
+          </dl>}
+          {supportingCalculatedMetrics.length > 0 && <dl className="calculated-rail" aria-label="Latest calculated ratios">
+            {supportingCalculatedMetrics.map((metric, index) => {
+              const copy = calculatedMetricLabels[metric.metric];
+              return <div className="calculated-row" key={metric.metric}>
+                <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                <div><dt>{copy.label}</dt><small>{copy.note}</small></div>
+                <dd>{calculatedNumberLabel(metric)}<small>{metric.financial_year ?? "All periods"}</small></dd>
+              </div>;
+            })}
+          </dl>}
+        </div>
+        <p className="calculated-method">CAGR uses the number of year-to-year intervals. Ratios are calculated only when every required source value passed validation.</p>
+      </section>}
 
       {(objects.length > 0 || growth.length > 0) && <section className="dossier-briefs" aria-label="Use of funds and growth case">
         <div className="briefs-grid">

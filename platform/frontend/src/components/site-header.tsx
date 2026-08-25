@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { getLastViewedIpo, getLastViewedIpoFallback, subscribeToLastViewedIpo } from "@/lib/last-viewed-ipo";
 
 export function SiteHeader({ lastRefresh }: { lastRefresh: string }) {
   const pathname = usePathname();
+  const mobileNavRef = useRef<HTMLDetailsElement>(null);
   const currentRecord = pathname.startsWith("/ipo/") ? pathname : null;
   const lastViewedRecord = useSyncExternalStore(subscribeToLastViewedIpo, getLastViewedIpo, getLastViewedIpoFallback);
   const issueRecord = currentRecord ?? lastViewedRecord;
@@ -28,6 +29,14 @@ export function SiteHeader({ lastRefresh }: { lastRefresh: string }) {
     return pathname === href;
   };
 
+  const closeMobileMenu = () => {
+    mobileNavRef.current?.removeAttribute("open");
+  };
+
+  useEffect(() => {
+    closeMobileMenu();
+  }, [pathname]);
+
   return (
     <header className="site-header">
       <div className="masthead">
@@ -39,9 +48,9 @@ export function SiteHeader({ lastRefresh }: { lastRefresh: string }) {
         <nav className="desktop-nav" aria-label="Primary navigation">{links.map(([href, label]) => <Link className={isActive(href, label) ? "active" : ""} href={href} key={label}>{label}</Link>)}</nav>
         <span className="refresh-note">Last refresh {lastRefresh}</span>
       </div>
-      <details className="mobile-nav">
+      <details className="mobile-nav" ref={mobileNavRef}>
         <summary aria-label="Open navigation menu"><span>Menu</span><i aria-hidden="true" /></summary>
-        <nav aria-label="Mobile navigation">{links.map(([href, label], index) => <Link href={href} key={label}><small>0{index + 1}</small>{label}<span aria-hidden="true">↗</span></Link>)}</nav>
+        <nav aria-label="Mobile navigation">{links.map(([href, label], index) => <Link href={href} key={label} onClick={closeMobileMenu}><small>0{index + 1}</small>{label}<span aria-hidden="true">↗</span></Link>)}</nav>
       </details>
     </header>
   );
