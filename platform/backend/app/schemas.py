@@ -164,6 +164,7 @@ class SummaryOut(BaseModel):
     open: int
     upcoming: int
     listed: int
+    listed_sme: int
     mainboard: int
     sme: int
     last_updated_at: datetime | None

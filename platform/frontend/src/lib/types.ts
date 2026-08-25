@@ -156,6 +156,11 @@ export interface Subscription {
   bid_data_scope?: "ALL_EXCHANGES" | "NSE_DISCOVERY" | "BSE_ONLY" | "LEGACY";
 }
 
+export type SubscriptionMomentumRow = Pick<
+  Subscription,
+  "exchange" | "bid_data_scope" | "captured_at" | "observed_at" | "category" | "calculated_subscription"
+>;
+
 export interface IpoDetailData extends IpoCardData {
   isin: string | null;
   issue_type: string;
@@ -199,6 +204,7 @@ export interface Summary {
   open: number;
   upcoming: number;
   listed: number;
+  listed_sme: number;
   mainboard: number;
   sme: number;
   last_updated_at: string | null;

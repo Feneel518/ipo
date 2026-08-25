@@ -283,6 +283,15 @@ def summary(db: Annotated[Session, Depends(get_db)]) -> SummaryOut:
         open=count_where(lifecycle == Lifecycle.OPEN),
         upcoming=count_where(lifecycle == Lifecycle.UPCOMING),
         listed=count_where(lifecycle == Lifecycle.LISTED),
+        listed_sme=count_where(
+            lifecycle == Lifecycle.LISTED,
+            Ipo.listings.any(
+                and_(
+                    ExchangeListing.segment == Segment.SME,
+                    ExchangeListing.is_stale.is_(False),
+                )
+            ),
+        ),
         mainboard=count_where(
             Ipo.listings.any(
                 and_(
