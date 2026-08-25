@@ -332,7 +332,7 @@ class IpoExtractionRun(Base):
 
 
 class IpoMetric(Base):
-    """Canonical reported fact normalized from a versioned RHP extraction."""
+    """Canonical reported or calculated metric for a versioned RHP extraction."""
 
     __tablename__ = "ipo_metrics"
     __table_args__ = (

@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models import Exchange, Lifecycle, MarketType, Segment
 
@@ -108,6 +108,16 @@ class SubscriptionOut(BaseModel):
     bid_data_scope: str
 
 
+class CalculatedRhpMetricOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    metric: str
+    financial_year: str | None
+    numeric_value: Decimal | None
+    text_value: str | None
+    unit: str | None
+    status: str
+
+
 class IpoDetail(IpoCard):
     isin: str | None
     issue_type: str
@@ -134,12 +144,57 @@ class IpoDetail(IpoCard):
     reservation_summary: ReservationSummaryOut | None
     lot_size_applications: list[LotApplicationOut]
     rhp_analysis: dict[str, Any] | None
+    rhp_calculated_metrics: list[CalculatedRhpMetricOut]
     rhp_analysis_status: str | None
     rhp_approved_at: datetime | None
     master_data_last_fetched_at: datetime | None
     master_data_sources: list[str]
     last_updated_at: datetime
     sources: list[str]
+
+
+class RhpReviewResolutionIn(BaseModel):
+    issue_code: str = Field(min_length=1, max_length=100)
+    disposition: str = Field(min_length=1, max_length=20)
+    note: str = Field(min_length=1, max_length=1000)
+
+
+class RhpReviewIn(BaseModel):
+    reviewer: str = Field(min_length=1, max_length=200)
+    resolutions: list[RhpReviewResolutionIn]
+
+
+class RhpApprovalIn(BaseModel):
+    approver: str = Field(min_length=1, max_length=200)
+
+
+class RhpReviewRunOut(BaseModel):
+    run_id: int
+    job_id: int
+    document_id: int
+    ipo_id: int
+    company_name: str
+    ipo_slug: str
+    status: str
+    model: str
+    prompt_version: str
+    schema_version: str
+    validation_issues: list[dict[str, Any]]
+    review_resolutions: list[dict[str, Any]]
+    raw_json: dict[str, Any] | None
+    error_code: str | None
+    error_message: str | None
+    started_at: datetime
+    completed_at: datetime | None
+    reviewed_at: datetime | None
+    reviewed_by: str | None
+    approved_at: datetime | None
+    approved_by: str | None
+
+
+class RhpReviewQueueOut(BaseModel):
+    data: list[RhpReviewRunOut]
+    counts: dict[str, int]
 
 
 class PageMeta(BaseModel):
@@ -164,6 +219,7 @@ class SummaryOut(BaseModel):
     open: int
     upcoming: int
     listed: int
+    listed_sme: int
     mainboard: int
     sme: int
     last_updated_at: datetime | None

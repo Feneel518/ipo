@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from app.services.rhp.gemini import (
     GeminiStructuredOutputError,
     _api_retry_delay,
+    _parse_json_object,
     _repair_unresolved_found,
     _truncate_bounded_lists,
     _truncate_bounded_strings,
@@ -194,6 +196,12 @@ def test_rate_limit_retry_honors_google_delay():
         code = 429
 
     assert _api_retry_delay(RateLimitError("Please retry in 52.5s"), 0) == 53.5
+
+
+def test_malformed_model_json_is_repaired_before_schema_validation():
+    parsed, repaired = _parse_json_object('{"company": {"name": "Example" "industry": "Textiles"}}')
+    assert parsed == {"company": {"name": "Example", "industry": "Textiles"}}
+    assert repaired is True
 
 
 def test_gemini_client_uses_configured_request_timeout(monkeypatch):
@@ -570,9 +578,34 @@ def test_normalization_creates_reported_metrics_with_provenance():
     assert revenue.provenance[0]["pdf_page"] == 2
 
 
+def test_million_money_is_stored_in_crores():
+    payload = extraction_payload()
+    payload["financials"][0]["revenue_from_operations"] = found_numeric(7295.3, "INR_MILLION", 2)
+    extraction = RhpExtractionV1.model_validate(payload)
+    revenue = next(
+        item
+        for item in normalize_extraction(extraction)
+        if item.metric == "revenue_from_operations"
+    )
+    assert revenue.numeric_value == Decimal("729.53")
+    assert revenue.unit == "INR_CRORE"
+
+
+def test_converted_crore_value_is_supported_by_million_source_evidence():
+    payload = extraction_payload()
+    payload["financials"][0]["revenue_from_operations"] = found_numeric(729.53, "INR_CRORE", 2)
+    payload["financials"][0]["revenue_from_operations"]["sources"][0]["evidence"] = (
+        "Revenue from operations (INR in millions) | 7,295.3"
+    )
+    issues = validate_extraction(RhpExtractionV1.model_validate(payload), page_count=10)
+    assert not any(issue["code"] == "VALUE_NOT_IN_EVIDENCE" for issue in issues)
+
+
 def test_prompt_treats_pdf_as_untrusted_and_forbids_recommendations():
     assert "untrusted source material" in RHP_EXTRACTION_PROMPT_V1
     assert "Do not provide investment recommendations" in RHP_EXTRACTION_PROMPT_V1
     assert "at most 300 characters" in RHP_EXTRACTION_PROMPT_V1
     assert "none of the promoter shares are pledged" in RHP_EXTRACTION_PROMPT_V1
     assert "Do not add long-term and short-term debt" in RHP_EXTRACTION_PROMPT_V1
+    assert "return every monetary financial metric and issue" in RHP_EXTRACTION_PROMPT_V1
+    assert "Never return INR_MILLION or INR_LAKH" in RHP_EXTRACTION_PROMPT_V1

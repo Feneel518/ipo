@@ -28,6 +28,15 @@ app.include_router(router)
 _requests: dict[str, deque[float]] = defaultdict(deque)
 
 
+def _cache_control(path: str) -> str:
+    # List and detail endpoints expose different projections of the same IPO
+    # row. Shared/CDN caches key them separately and can therefore serve two
+    # different revisions after an exchange update.
+    if path.startswith("/api/v1/"):
+        return "no-store"
+    return "public, max-age=60, stale-while-revalidate=300"
+
+
 @app.middleware("http")
 async def request_controls(request: Request, call_next):
     request_id = request.headers.get("x-request-id", str(uuid.uuid4()))
@@ -42,7 +51,7 @@ async def request_controls(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     if request.method == "GET" and response.status_code == 200:
-        response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
+        response.headers["Cache-Control"] = _cache_control(request.url.path)
     return response
 
 

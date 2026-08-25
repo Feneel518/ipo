@@ -49,8 +49,8 @@ Create a second service from the same repository and set:
 
 Use the same `DATABASE_URL`, `ENVIRONMENT`, `REVALIDATION_URL`, and `REVALIDATION_SECRET` variables. It runs `ipo-ingest` every five minutes; the application itself skips detail requests until each IPO is due for refresh.
 
-To archive RHPs for upcoming and open IPOs, add these variables to the ingestion cron service (the API service
-does not need the R2 credentials):
+To run the complete RHP pipeline automatically for every upcoming and open IPO, add these variables
+to the ingestion cron service (the API service does not need these credentials):
 
 ```dotenv
 R2_BUCKET=ipo
@@ -62,6 +62,15 @@ GEMINI_SAFE_PDF_BYTES=47185920
 GEMINI_MAX_PDF_PAGES=1000
 RHP_CHUNK_MAX_BYTES=41943040
 RHP_CHUNK_MAX_PAGES=300
+GEMINI_API_KEY=YOUR_SERVER_SIDE_GEMINI_KEY
+RHP_PRIMARY_MODEL=gemini-3.5-flash-lite
+RHP_PROMPT_VERSION=rhp-v1.7
+RHP_SCHEMA_VERSION=rhp-v1.1
+RHP_EXTRACTION_BATCH_SIZE=5
+RHP_EXTRACTION_MAX_ATTEMPTS=3
+GEMINI_FILE_TIMEOUT_SECONDS=300
+GEMINI_FILE_POLL_SECONDS=2
+GEMINI_REQUEST_TIMEOUT_SECONDS=180
 ```
 
 Create an R2 S3 API token with **Object Read & Write** access scoped only to the `ipo` bucket.
@@ -77,31 +86,27 @@ Each stored PDF is inspected for page count, encryption, and parse errors. Docum
 when still over the direct limits, split into chunks of at most 40 MiB and 300 pages. Processing
 files remain private in R2 and retain their original PDF page ranges for extraction provenance.
 
-#### RHP extraction cron service
+#### Optional dedicated RHP extraction cron service
 
-Create a third service from the same repository and set:
+The ingestion cron automatically archives, prepares, queues, and extracts an active IPO RHP only
+when that RHP is first stored. Empty five-minute discovery runs do not invoke Gemini, and the
+document hash prevents duplicate paid extraction. For higher throughput or scheduled retries, you
+can also create a dedicated extraction service from the same repository and set:
 
 - Root Directory: `/platform/backend`
 - Config File Path: `/platform/backend/railway.extract.toml`
 - No public domain is required
 
-Give it the database and R2 variables above, plus:
-
-```dotenv
-GEMINI_API_KEY=YOUR_SERVER_SIDE_GEMINI_KEY
-RHP_PRIMARY_MODEL=gemini-3.5-flash-lite
-RHP_PROMPT_VERSION=rhp-v1.7
-RHP_SCHEMA_VERSION=rhp-v1.1
-RHP_EXTRACTION_BATCH_SIZE=5
-RHP_EXTRACTION_MAX_ATTEMPTS=3
-GEMINI_FILE_TIMEOUT_SECONDS=300
-GEMINI_FILE_POLL_SECONDS=2
-GEMINI_REQUEST_TIMEOUT_SECONDS=180
-```
+Give it the same database, R2, and Gemini variables. PostgreSQL row locking makes it safe to run
+alongside the ingestion cron.
 
 `GEMINI_API_KEY` belongs only on this backend worker and must never use a `NEXT_PUBLIC_` prefix.
 The worker claims jobs with PostgreSQL row locks, uploads one prepared PDF to Gemini, stores the
 raw structured response and usage metadata, validates it, and writes canonical reported metrics.
+It then calculates the v2 investor metrics in Python: sales and PAT CAGR, PAT margin,
+debt/equity, OCF/PAT cash conversion, receivables/revenue, its year-on-year trend, and annual
+revenue growth. Calculated rows are stored separately with `source=CALCULATED`; they never replace
+issuer-reported facts and never use a source value quarantined as ambiguous.
 Its identity is the document SHA-256 plus model, prompt version, and schema version, so completed
 work is not paid for twice. Temporary Gemini files are deleted after each attempt.
 
@@ -112,6 +117,12 @@ Gemini's requested delay. Missing disclosures remain `NOT_FOUND` or `NOT_APPLICA
 treated as extraction failures. A claimed numeric value whose focused citation does not support it
 is retained in the raw audit record but omitted from canonical output as `AMBIGUOUS`.
 
+Existing unapproved Gemini runs can be backfilled without another model call:
+
+```powershell
+ipo-extract --refresh-calculated-metrics
+```
+
 Warning-bearing runs use an explicit human approval workflow. Each warning needs an ordered
 disposition and audit note before the run can move from `READY_WITH_WARNINGS` to `REVIEWED`, and
 only a reviewed run can move to `APPROVED`:
@@ -121,6 +132,19 @@ ipo-review review --run-id 123 --reviewer reviewer-name `
   --resolution "MODEL_WARNING=ACCEPTED=Checked against the cited RHP page."
 ipo-review approve --run-id 123 --approver approver-name
 ```
+
+The same workflow is available at `/review`. The page is protected with HTTP Basic authentication,
+keeps the backend token server-side, and provides ordered dispositions, audit notes, raw JSON
+inspection, and final approval. Configure these frontend-only server variables:
+
+```dotenv
+INTERNAL_API_TOKEN=USE_THE_SAME_PRIVATE_TOKEN_AS_RAILWAY
+REVIEW_DASHBOARD_USER=editor
+REVIEW_DASHBOARD_PASSWORD=USE_A_LONG_RANDOM_PASSWORD
+```
+
+Malformed Gemini JSON is conservatively syntax-repaired before Pydantic validation. Any repaired
+pass is marked with a warning, so it cannot be published without appearing in this review queue.
 
 The current worker intentionally accepts only RHPs represented by one `ORIGINAL` or `OPTIMIZED`
 processing file. Documents split into `CHUNK` files remain unqueued until candidate reconciliation
@@ -135,6 +159,9 @@ Import this GitHub repository as a Vercel project and set its Root Directory to 
 API_BASE_URL=https://YOUR_RAILWAY_API_DOMAIN
 NEXT_PUBLIC_SITE_URL=https://YOUR_VERCEL_DOMAIN
 REVALIDATION_SECRET=USE_THE_SAME_RANDOM_VALUE_AS_RAILWAY
+INTERNAL_API_TOKEN=USE_THE_SAME_PRIVATE_TOKEN_AS_RAILWAY
+REVIEW_DASHBOARD_USER=editor
+REVIEW_DASHBOARD_PASSWORD=USE_A_LONG_RANDOM_PASSWORD
 ```
 
 After the first Vercel deployment, replace `YOUR_VERCEL_DOMAIN` in Railway's variables with the real production URL and redeploy the Railway services. Preview deployments use the production API through server-side requests; add a preview origin to `CORS_ORIGINS` only if browser-side API calls are introduced later.

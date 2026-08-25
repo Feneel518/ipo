@@ -1,0 +1,8 @@
+import { getIpos } from "@/lib/api";
+import { displayCompanyName, displayDate } from "@/lib/format";
+
+export default async function AllotmentPage() {
+  const issues = await getIpos(new URLSearchParams({ status: "OPEN", limit: "5" }));
+  const lead = issues.data[0];
+  return <section className="gazette-page gazette-allotment"><p className="gazette-kicker">Applicants&apos; desk</p><h1>Allotment Status</h1><div className="allotment-grid"><div><p className="gazette-intro">Enter the details from your application. Registrars publish the basis of allotment on the estimated allotment date; before then the check returns no record.</p><div className="allotment-fields"><label><span>Issue</span><output>{lead ? displayCompanyName(lead.company_name) : "Select an issue"}</output></label><label><span>Registrar</span><output>Registrar of record</output></label><label><span>PAN</span><input placeholder="A B C D E 1 2 3 4 F" /></label><label><span>Application number</span><input placeholder="Optional" /></label></div><button className="allotment-button">Check status</button><div className="allotment-note"><strong>Reading the odds before allotment</strong><p>Final allotment is determined by the registrar after bid validation. The gazette organizes exchange-published information and does not store PAN data.</p></div></div><aside><div className="column-heading"><span>Allotment dates ahead</span></div>{issues.data.map((ipo) => <div className="allotment-date" key={ipo.id}><span>{displayCompanyName(ipo.company_name)}</span><strong>{displayDate(ipo.allotment_date, { day: "numeric", month: "short" })}{ipo.allotment_date_is_estimated ? " · est." : ""}</strong></div>)}</aside></div></section>;
+}

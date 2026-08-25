@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..700&family=EB+Garamond:ital,wght@0,400..700;1,400..600&family=Marcellus&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #ddd6c4; }
+  * { box-sizing: border-box; }
+  a { color: #171512; text-decoration: none; }
+  a:hover { color: #8c2f1d; }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#ddd6c4;padding:26px 14px 70px;font-family:'EB Garamond',Georgia,serif;color:#171512;font-size:15px;line-height:1.5">
+<div style="max-width:1180px;margin:0 auto;background:#f7f4ea;border:1px solid #171512;box-shadow:0 26px 60px rgba(0,0,0,.3);padding:26px 30px 40px">
+
+  <div style="display:grid;grid-template-columns:180px 1fr 220px;align-items:stretch;gap:0;border-bottom:3px double #171512;padding-bottom:14px">
+    <div style="padding-right:16px;border-right:1px solid #171512;display:flex;flex-direction:column;justify-content:center;gap:6px">
+      <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.16em;text-transform:uppercase">Nº / {{ editionNo }} · Aug 2026</div>
+      <div style="font-family:'Bodoni Moda',serif;font-size:26px;letter-spacing:.02em;line-height:1">आई॰पी॰ओ</div>
+      <div style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#5c5648">Daily at 7:30 PM IST</div>
+    </div>
+    <div style="text-align:center;padding:0 18px">
+      <div style="font-family:'Archivo',sans-serif;font-size:12px;letter-spacing:.42em;text-transform:uppercase;padding-bottom:2px">I P O &nbsp; M I L E G A</div>
+      <div style="font-family:'Bodoni Moda',serif;font-weight:700;font-size:82px;line-height:.92;letter-spacing:.06em">GAZETTE</div>
+      <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:14px;color:#3b362c">Issues, price bands &amp; the exchange book</div>
+    </div>
+    <div style="padding-left:16px;border-left:1px solid #171512;display:flex;flex-direction:column;justify-content:center;gap:5px;font-size:12px;font-style:italic;color:#3b362c">
+      <div>ipomilega.in</div>
+      <div>NSE · BSE · NSE SME · BSE SME</div>
+      <div>Sourced from the exchanges</div>
+      <div style="font-family:'Archivo',sans-serif;font-style:normal;font-size:11px;letter-spacing:.1em;border:1px solid #171512;display:inline-block;padding:2px 8px;margin-top:4px;width:fit-content"># {{ editionNo }}</div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:baseline;border-bottom:1px solid #171512;padding:8px 0 7px;margin-bottom:20px">
+    <sc-for list="{{ nav }}" as="item" hint-placeholder-count="6">
+      <div style="display:flex;flex-direction:column;gap:3px;cursor:pointer" onClick="{{ item.go }}">
+        <span style="font-family:'Archivo',sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase">{{ item.label }}</span>
+        <sc-if value="{{ item.active }}" hint-placeholder-val="{{ true }}">
+          <span style="display:block;height:3px;background:#171512"></span>
+        </sc-if>
+      </div>
+    </sc-for>
+    <div style="margin-left:auto;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#5c5648">Last refresh 24 Aug 2026, 6:31 pm</div>
+  </div>
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+  <div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:26px;padding-bottom:20px;border-bottom:1px solid #171512">
+      <div>
+        <div style="background:#171512;color:#f7f4ea;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:4px 8px;text-align:center">On the clock</div>
+        <div style="font-family:'Bodoni Moda',serif;font-size:30px;text-align:center;padding:10px 0 4px">7 OPEN</div>
+        <div style="font-size:13px;text-align:justify;color:#3b362c">Seven issues are accepting bids across the mainboard and both SME platforms. Four close on 26 August; Augmont Enterprises and Tempsens Instruments are in their final sessions.</div>
+      </div>
+      <div>
+        <div style="background:#171512;color:#f7f4ea;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:4px 8px;text-align:center">Next in line</div>
+        <div style="font-family:'Bodoni Moda',serif;font-size:30px;text-align:center;padding:10px 0 4px">3 UPCOMING</div>
+        <div style="font-size:13px;text-align:justify;color:#3b362c">Annu Projects and Sumax Engineering open 24 August; Lumino Industries follows on 26 August with a band of ₹78 to ₹82 a share.</div>
+      </div>
+      <div>
+        <div style="background:#171512;color:#f7f4ea;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:4px 8px;text-align:center">First day</div>
+        <div style="font-family:'Bodoni Moda',serif;font-size:30px;text-align:center;padding:10px 0 4px">200 LISTED</div>
+        <div style="font-size:13px;text-align:justify;color:#3b362c">Two hundred issues have completed listing in the record, 110 of them on the SME segments. Lalithaa Jewellery and Horizon Industrial Parks listed on 16 August.</div>
+      </div>
+    </div>
+
+    <div style="background:#e9e5d7;border-bottom:1px solid #171512;padding:24px 26px;display:grid;grid-template-columns:340px 1fr;gap:34px;margin-bottom:18px">
+      <div>
+        <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#8c2f1d">Lead issue · Mainboard</div>
+        <div style="font-family:'Bodoni Moda',serif;font-size:46px;line-height:1.02;padding:6px 0 2px">Symbiotec Pharmalab</div>
+        <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:17px;padding-bottom:12px">The book builds toward full cover</div>
+        <div style="font-size:13px;text-align:justify;color:#2c2822">Bidding opened 23 August at a band of ₹938 to ₹988 a share, with a lot of 15 shares and a face value of ₹2. The issue offers 1,31,24,929 shares, of which 1,30,89,552 form the public book. As of the 5:00 pm exchange tape the overall book stood at 0.8 times, with the non-institutional pool at 1.04 times and retail at 0.95 times. Bidding closes 26 August; allotment is estimated for 27 August and listing for 31 August on both exchanges.</div>
+        <div style="margin-top:14px;font-family:'Archivo',sans-serif;font-size:11px;letter-spacing:.14em;text-transform:uppercase;border-bottom:1px solid #171512;display:inline-block;padding-bottom:2px;cursor:pointer" onClick="{{ openLead }}">Read the full record →</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #171512;padding-bottom:6px">
+          <span style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase">Subscription by category</span>
+          <span style="font-family:'EB Garamond',serif;font-style:italic;font-size:12px">Exchange timestamp 24 Aug, 5:00 pm</span>
+        </div>
+        <sc-for list="{{ leadSubs }}" as="row" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:86px 1fr 74px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid #cfc8b4">
+            <span style="font-family:'Archivo',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase">{{ row.label }}</span>
+            <span style="display:block;height:10px;background:#171512;width:{{ row.w }}"></span>
+            <span style="font-family:'Bodoni Moda',serif;font-size:20px;text-align:right">{{ row.x }}×</span>
+          </div>
+        </sc-for>
+        <div style="font-size:12px;font-style:italic;color:#4a4438;padding-top:8px">Confirmed bids ÷ reserved shares. Subscription measures demand, not potential listing gain.</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1px 1fr;gap:24px">
+      <div>
+        <div style="border-top:2px solid #171512;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 0 10px">Open for subscription</div>
+        <sc-for list="{{ openList }}" as="row" hint-placeholder-count="4">
+          <div style="display:grid;grid-template-columns:44px 1fr 96px;gap:12px;padding:11px 0;border-bottom:1px solid #cfc8b4;cursor:pointer" onClick="{{ row.go }}">
+            <div style="text-align:center;border-right:1px solid #cfc8b4">
+              <div style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase">{{ row.mon }}</div>
+              <div style="font-family:'Bodoni Moda',serif;font-size:22px;line-height:1">{{ row.day }}</div>
+            </div>
+            <div>
+              <div style="font-family:'Marcellus',Georgia,serif;font-size:18px;letter-spacing:.01em;line-height:1.15">{{ row.name }}</div>
+              <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#5c5648;padding-top:3px">{{ row.exch }} · lot {{ row.lot }}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:14px">{{ row.band }}</div>
+              <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8c2f1d">Closes {{ row.closes }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="background:#171512"></div>
+      <div>
+        <div style="border-top:2px solid #171512;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 0 10px">Market note</div>
+        <div style="border-left:3px solid #171512;padding:2px 0 2px 14px;font-family:'EB Garamond',serif;font-style:italic;font-size:19px;line-height:1.4">Dates move. Price bands change. We retain the source trail and show when the data was last refreshed.</div>
+        <div style="border-top:2px solid #171512;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 0 10px;margin-top:22px">Upcoming issues</div>
+        <sc-for list="{{ upcomingList }}" as="row" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:1fr 120px;gap:10px;padding:10px 0;border-bottom:1px solid #cfc8b4;cursor:pointer" onClick="{{ row.go }}">
+            <div>
+              <div style="font-family:'Marcellus',Georgia,serif;font-size:18px;letter-spacing:.01em">{{ row.name }}</div>
+              <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#5c5648;padding-top:3px">{{ row.exch }}</div>
+            </div>
+            <div style="text-align:right;font-size:14px">{{ row.band }}<div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5c5648">Opens {{ row.mon }} {{ row.day }}</div></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isBoard }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#8c2f1d">The complete board</div>
+    <div style="font-family:'Bodoni Moda',serif;font-size:54px;line-height:1.05;padding:4px 0 6px">IPO Directory</div>
+    <div style="font-size:15px;font-style:italic;max-width:640px;color:#3b362c;padding-bottom:16px">Official-source issue data across India's mainboard and SME exchanges. Showing 20 issues, updated 24 August 2026, 5:36 pm.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid #171512;border-bottom:1px solid #171512;padding:9px 0;margin-bottom:14px">
+      <sc-for list="{{ filters }}" as="f" hint-placeholder-count="5">
+        <sc-if value="{{ f.active }}" hint-placeholder-val="{{ false }}">
+          <span style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:4px 12px;background:#171512;color:#f7f4ea;cursor:pointer" onClick="{{ f.go }}">{{ f.label }}</span>
+        </sc-if>
+        <sc-if value="{{ f.idle }}" hint-placeholder-val="{{ true }}">
+          <span style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:4px 12px;border:1px solid #171512;cursor:pointer" onClick="{{ f.go }}">{{ f.label }}</span>
+        </sc-if>
+      </sc-for>
+      <span style="margin-left:auto;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#5c5648;align-self:center">{{ boardCount }} issues shown</span>
+    </div>
+    <div style="display:grid;grid-template-columns:58px 1fr 130px 150px 70px 90px 92px;gap:14px;border-bottom:2px solid #171512;padding-bottom:6px;font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase">
+      <span>Opens</span><span>Company</span><span>Listing at</span><span>Price band</span><span>Lot</span><span>Closes</span><span style="text-align:right">Status</span>
+    </div>
+    <sc-for list="{{ boardRows }}" as="row" hint-placeholder-count="12">
+      <div style="display:grid;grid-template-columns:58px 1fr 130px 150px 70px 90px 92px;gap:14px;align-items:baseline;padding:10px 0;border-bottom:1px solid #cfc8b4;cursor:pointer" onClick="{{ row.go }}">
+        <span style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase">{{ row.mon }} {{ row.day }}</span>
+        <span style="font-family:'Marcellus',Georgia,serif;font-size:18px;letter-spacing:.01em">{{ row.name }}</span>
+        <span style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5c5648">{{ row.exch }}</span>
+        <span style="font-size:14px">{{ row.band }}</span>
+        <span style="font-size:14px">{{ row.lot }}</span>
+        <span style="font-size:14px">{{ row.closes }}</span>
+        <span style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase;text-align:right">{{ row.status }}</span>
+      </div>
+    </sc-for>
+    <div style="font-size:12px;font-style:italic;color:#4a4438;padding-top:12px">Rows are drawn from NSE and BSE master data. Select any company to open its record.</div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.16em;text-transform:uppercase;display:flex;gap:10px;color:#5c5648">
+      <span style="cursor:pointer;color:#171512" onClick="{{ goBoard }}">Directory</span><span>/</span><span>{{ sel.name }}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 260px;gap:30px;border-bottom:3px double #171512;padding:6px 0 18px">
+      <div>
+        <div style="font-family:'Bodoni Moda',serif;font-size:52px;line-height:1.02">{{ sel.name }}</div>
+        <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding-top:8px">{{ sel.status }} · {{ sel.listing }} · Book building IPO</div>
+      </div>
+      <div style="border-left:1px solid #171512;padding-left:20px">
+        <div style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#5c5648">Price band</div>
+        <div style="font-family:'Bodoni Moda',serif;font-size:27px;line-height:1.2">{{ sel.band }}</div>
+        <div style="font-size:13px;font-style:italic">per equity share · lot of {{ sel.lot }}</div>
+      </div>
+    </div>
+
+    <sc-if value="{{ sel.hasProfile }}" hint-placeholder-val="{{ true }}">
+    <div style="background:#e9e5d7;border-bottom:1px solid #171512;padding:22px 26px;margin-top:18px;display:grid;grid-template-columns:1fr 300px 200px;gap:30px">
+      <div>
+        <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#8c2f1d">Company at a glance · {{ sel.reviewed }}</div>
+        <div style="font-family:'Bodoni Moda',serif;font-size:34px;line-height:1.06;padding:6px 0 8px">What the company does</div>
+        <div style="font-size:14px;text-align:justify;color:#2c2822">{{ sel.profile }}</div>
+        <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding-top:10px;color:#5c5648">{{ sel.sector }} · verify in the RHP ↗</div>
+      </div>
+      <div>
+        <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;border-bottom:1px solid #171512;padding-bottom:5px">Products &amp; services</div>
+        <sc-for list="{{ sel.products }}" as="p" hint-placeholder-count="8">
+          <div style="font-size:14px;padding:5px 0;border-bottom:1px solid #d8d1bd">{{ p }}</div>
+        </sc-for>
+        <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:13px;padding-top:6px;color:#4a4438">{{ sel.productsNote }}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <sc-for list="{{ sel.glance }}" as="g" hint-placeholder-count="2">
+          <div style="border-top:2px solid #171512;padding-top:8px">
+            <div style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#5c5648">{{ g.k }}</div>
+            <div style="font-family:'Bodoni Moda',serif;font-size:32px;line-height:1.1">{{ g.v }}</div>
+            <div style="font-size:13px;font-style:italic;color:#4a4438">{{ g.n }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <div style="display:grid;grid-template-columns:1fr 1px 340px;gap:26px;padding-top:18px">
+      <div>
+        <div style="border-top:2px solid #171512;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 0 12px">IPO timetable</div>
+        <sc-for list="{{ sel.timetable }}" as="t" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:34px 1fr 150px;gap:12px;align-items:baseline;padding:9px 0;border-bottom:1px solid #cfc8b4">
+            <span style="font-family:'Archivo',sans-serif;font-size:10px;color:#8c8264">{{ t.n }}</span>
+            <span style="font-family:'EB Garamond',serif;font-size:16px">{{ t.label }}</span>
+            <span style="text-align:right;font-size:15px">{{ t.date }} <span style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#8c2f1d">{{ t.note }}</span></span>
+          </div>
+        </sc-for>
+        <div style="font-size:12px;font-style:italic;color:#4a4438;padding:8px 0 22px">Only dates marked estimated use the standard exchange timeline. Unmarked dates are exchange-reported.</div>
+
+        <div style="border-top:2px solid #171512;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 0 12px">Valid application sizes</div>
+        <sc-for list="{{ sel.appSizes }}" as="a" hint-placeholder-count="5">
+          <div style="display:grid;grid-template-columns:1fr 90px 130px;gap:12px;align-items:baseline;padding:9px 0;border-bottom:1px solid #cfc8b4">
+            <span style="font-size:15px">{{ a.cat }} <span style="font-style:italic;color:#5c5648">{{ a.kind }}</span></span>
+            <span style="font-family:'Archivo',sans-serif;font-size:11px;color:#5c5648">{{ a.lots }} lots · {{ a.shares }}</span>
+            <span style="font-family:'Marcellus',Georgia,serif;font-size:18px;letter-spacing:.01em;text-align:right">{{ a.amt }}</span>
+          </div>
+        </sc-for>
+        <div style="font-size:12px;font-style:italic;color:#4a4438;padding-top:8px">Calculated at the upper band of {{ sel.upper }} per share. Amounts exclude blocked-funds variation.</div>
+      </div>
+      <div style="background:#171512"></div>
+      <div>
+        <div style="border-top:2px solid #171512;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 0 10px">Key details</div>
+        <sc-for list="{{ sel.facts }}" as="f" hint-placeholder-count="8">
+          <div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid #cfc8b4;font-size:14px">
+            <span style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5c5648">{{ f.k }}</span>
+            <span style="text-align:right">{{ f.v }}</span>
+          </div>
+        </sc-for>
+        <div style="border-top:2px solid #171512;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 0 10px;margin-top:22px">Filed documents</div>
+        <sc-for list="{{ sel.docs }}" as="d" hint-placeholder-count="5">
+          <div style="padding:7px 0;border-bottom:1px solid #cfc8b4;font-size:14px">{{ d }} <span style="color:#8c2f1d">↗</span></div>
+        </sc-for>
+        <div style="background:#e9e5d7;padding:14px 16px;margin-top:22px;font-size:13px;font-style:italic">This page organizes exchange-published information. It is not a recommendation. Read the offer document and assess the risks independently.</div>
+      </div>
+    </div>
+
+    <div style="border-top:3px double #171512;margin-top:28px;padding-top:14px">
+      <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#8c2f1d">Application field guide</div>
+      <div style="font-family:'Bodoni Moda',serif;font-size:38px;line-height:1.05;padding:2px 0 12px">Shares reserved for you</div>
+      <div style="display:grid;grid-template-columns:1.3fr 100px 110px 150px 1fr;gap:16px;border-bottom:2px solid #171512;padding-bottom:6px;font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase">
+        <span>Category</span><span style="text-align:right">Pool size</span><span style="text-align:right">Allottees</span><span style="text-align:right">Allocation</span><span style="text-align:right">Live estimate</span>
+      </div>
+      <sc-for list="{{ sel.pools }}" as="p" hint-placeholder-count="6">
+        <div style="display:grid;grid-template-columns:1.3fr 100px 110px 150px 1fr;gap:16px;align-items:baseline;padding:10px 0;border-bottom:1px solid #cfc8b4">
+          <span><span style="font-family:'Marcellus',Georgia,serif;font-size:17px">{{ p.cat }}</span> <span style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#5c5648">{{ p.note }}</span></span>
+          <span style="text-align:right;font-size:15px">{{ p.pool }}</span>
+          <span style="text-align:right;font-size:15px">{{ p.allottees }}</span>
+          <span style="text-align:right;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase">{{ p.pct }}</span>
+          <span style="text-align:right;font-size:14px;font-style:italic">{{ p.est }}</span>
+        </div>
+      </sc-for>
+      <div style="font-size:12px;font-style:italic;color:#4a4438;padding-top:8px">Estimate is possible allottees divided by applications. Where the exchange omits application counts, the floor assumes every bid used that category's minimum bid size.</div>
+    </div>
+
+    <sc-if value="{{ sel.hasDossier }}" hint-placeholder-val="{{ true }}">
+    <div style="border-top:3px double #171512;margin-top:30px;padding-top:14px">
+      <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#8c2f1d">Prospectus dossier</div>
+      <div style="display:grid;grid-template-columns:1fr 380px;gap:30px;align-items:end;padding:2px 0 16px">
+        <div style="font-family:'Bodoni Moda',serif;font-size:42px;line-height:1.04">Numbers, plans <span style="font-style:italic">&amp; pressure points</span></div>
+        <div style="font-size:14px;font-style:italic;color:#3b362c">A focused reading of the company's reported financials, planned use of proceeds, business strengths and material risks.</div>
+      </div>
+
+      <div style="background:#171512;color:#f7f4ea;padding:20px 24px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #4a4438;padding-bottom:8px">
+          <span style="font-family:'Bodoni Moda',serif;font-size:26px">A multi-year view</span>
+          <span style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#a39a83">Figures retain the units reported in the RHP</span>
+        </div>
+        <div style="display:grid;grid-template-columns:90px repeat(5, 1fr);gap:14px;padding:10px 0 6px;font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#a39a83">
+          <span>Fiscal year</span><span style="text-align:right">Revenue</span><span style="text-align:right">Profit after tax</span><span style="text-align:right">Operating cash flow</span><span style="text-align:right">Borrowings</span><span style="text-align:right">Net worth</span>
+        </div>
+        <sc-for list="{{ sel.financials }}" as="f" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:90px repeat(5, 1fr);gap:14px;padding:11px 0;border-top:1px solid #3b362c;align-items:baseline">
+            <span style="font-family:'Bodoni Moda',serif;font-size:22px">{{ f.fy }}</span>
+            <span style="text-align:right;font-size:15px">{{ f.rev }}</span>
+            <span style="text-align:right;font-size:15px">{{ f.pat }}</span>
+            <span style="text-align:right;font-size:15px">{{ f.ocf }}</span>
+            <span style="text-align:right;font-size:15px">{{ f.debt }}</span>
+            <span style="text-align:right;font-size:15px">{{ f.nw }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1px 1fr;gap:26px;padding-top:24px">
+        <div>
+          <div style="border-top:2px solid #171512;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 0 4px">Use of funds</div>
+          <div style="font-family:'Bodoni Moda',serif;font-size:28px;padding-bottom:8px">Where the money goes</div>
+          <sc-for list="{{ sel.funds }}" as="u" hint-placeholder-count="3">
+            <div style="display:grid;grid-template-columns:30px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid #cfc8b4">
+              <span style="font-family:'Archivo',sans-serif;font-size:10px;color:#8c8264">{{ u.n }}</span>
+              <span style="font-size:14px;text-align:justify">{{ u.t }} <span style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#8c2f1d">{{ u.p }}</span></span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:#171512"></div>
+        <div>
+          <div style="border-top:2px solid #171512;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 0 4px">Growth case</div>
+          <div style="font-family:'Bodoni Moda',serif;font-size:28px;padding-bottom:8px">What could drive the business</div>
+          <sc-for list="{{ sel.strengths }}" as="s" hint-placeholder-count="8">
+            <div style="display:grid;grid-template-columns:16px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid #cfc8b4">
+              <span style="color:#8c2f1d;font-size:13px">↗</span>
+              <span style="font-size:14px;text-align:justify">{{ s.t }} <span style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#8c8264">{{ s.p }}</span></span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding-top:26px">
+        <div style="border-top:2px solid #171512;display:flex;justify-content:space-between;align-items:baseline;padding-top:5px">
+          <span style="font-family:'Bodoni Moda',serif;font-size:30px">Read the downside first</span>
+          <span style="font-size:13px;font-style:italic;color:#4a4438;max-width:380px;text-align:right">Selected material risks disclosed in the RHP. A summary, not a substitute for the prospectus.</span>
+        </div>
+        <sc-for list="{{ sel.risks }}" as="r" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:36px 300px 1fr;gap:16px;align-items:baseline;padding:12px 0;border-bottom:1px solid #cfc8b4">
+            <span style="font-family:'Archivo',sans-serif;font-size:10px;color:#8c8264">{{ r.n }}</span>
+            <span>
+              <span style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#8c2f1d;display:block">{{ r.tag }}</span>
+              <span style="font-family:'Marcellus',Georgia,serif;font-size:18px">{{ r.t }}</span>
+            </span>
+            <span style="font-size:14px;text-align:justify;color:#2c2822">{{ r.b }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 300px;gap:30px;border-top:2px solid #171512;margin-top:26px;padding-top:12px;align-items:center">
+        <div>
+          <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#5c5648">Live issue demand</div>
+          <div style="font-family:'Bodoni Moda',serif;font-size:30px">The book, <span style="font-style:italic">in motion</span></div>
+          <div style="font-size:13px;font-style:italic;color:#4a4438">{{ sel.tape }}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Bodoni Moda',serif;font-size:52px;line-height:1">{{ sel.overall }}×</div>
+          <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;border-bottom:1px solid #171512;display:inline-block" onClick="{{ goBook }}">Full subscription tape →</div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isBook }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#8c2f1d">Live issue demand</div>
+    <div style="font-family:'Bodoni Moda',serif;font-size:54px;line-height:1.05;padding:4px 0 6px">The Book, in Motion</div>
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:30px;border-bottom:3px double #171512;padding-bottom:18px">
+      <div style="font-size:15px;font-style:italic;color:#3b362c;max-width:620px">Subscription for <span style="font-family:'Marcellus',Georgia,serif;font-style:normal">{{ sel.name }}</span> as confirmed exchange bids enter the book, refreshed every five minutes while the issue is open. {{ sel.tape }}.</div>
+      <div style="border-left:1px solid #171512;padding-left:20px">
+        <div style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#5c5648">Overall book</div>
+        <div style="font-family:'Bodoni Moda',serif;font-size:46px;line-height:1">{{ sel.overall }}×</div>
+        <div style="font-size:13px;font-style:italic">{{ sel.overallNote }}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:120px 1fr 140px 140px 80px;gap:16px;border-bottom:2px solid #171512;padding:14px 0 6px;font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.14em;text-transform:uppercase">
+      <span>Category</span><span>Cover</span><span style="text-align:right">Confirmed bids</span><span style="text-align:right">Reserved shares</span><span style="text-align:right">Change</span>
+    </div>
+    <sc-for list="{{ bookRows }}" as="row" hint-placeholder-count="6">
+      <div style="display:grid;grid-template-columns:120px 1fr 140px 140px 80px;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid #cfc8b4">
+        <span style="font-family:'Archivo',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase">{{ row.label }}</span>
+        <span style="display:flex;align-items:center;gap:12px"><span style="display:block;height:12px;background:#171512;width:{{ row.w }}"></span><span style="font-family:'Bodoni Moda',serif;font-size:22px">{{ row.x }}×</span></span>
+        <span style="text-align:right;font-size:15px">{{ row.bids }}</span>
+        <span style="text-align:right;font-size:15px">{{ row.reserved }}</span>
+        <span style="text-align:right;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8c2f1d">{{ row.chg }}</span>
+      </div>
+    </sc-for>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;padding-top:20px">
+      <div style="font-size:13px;text-align:justify;color:#3b362c">Method: confirmed bids divided by reserved shares. On the mainboard scale, cover below one time is poor, one to three moderate, three to ten good, ten to thirty strong and above thirty very strong. Subscription measures demand, not potential listing gain.</div>
+      <div style="font-size:13px;text-align:justify;color:#3b362c">Allotment estimates shown on issue records divide possible allottees by applications. When the exchange omits application counts, the displayed floor assumes every bid used that category's minimum bid size. Final odds depend on valid applications and the basis of allotment.</div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isCalendar }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#8c2f1d">Diary of the primary market</div>
+    <div style="font-family:'Bodoni Moda',serif;font-size:54px;line-height:1.05;padding:4px 0 16px">Calendar</div>
+    <sc-for list="{{ calendar }}" as="day" hint-placeholder-count="6">
+      <div style="display:grid;grid-template-columns:120px 1fr;gap:24px;border-top:2px solid #171512;padding:12px 0 16px">
+        <div>
+          <div style="font-family:'Bodoni Moda',serif;font-size:38px;line-height:1">{{ day.day }}</div>
+          <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#5c5648">{{ day.mon }} · {{ day.weekday }}</div>
+        </div>
+        <div>
+          <sc-for list="{{ day.events }}" as="e" hint-placeholder-count="2">
+            <div style="display:grid;grid-template-columns:110px 1fr 150px;gap:14px;align-items:baseline;padding:8px 0;border-bottom:1px solid #cfc8b4">
+              <span style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.14em;text-transform:uppercase">{{ e.kind }}</span>
+              <span style="font-family:'Marcellus',Georgia,serif;font-size:18px;letter-spacing:.01em">{{ e.name }}</span>
+              <span style="text-align:right;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5c5648">{{ e.exch }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+    <div style="font-size:12px;font-style:italic;color:#4a4438;padding-top:12px">Allotment, refund and listing dates use the standard exchange timeline until the exchange reports them.</div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isAllotment }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#8c2f1d">Applicants' desk</div>
+    <div style="font-family:'Bodoni Moda',serif;font-size:54px;line-height:1.05;padding:4px 0 6px">Allotment Status</div>
+    <div style="display:grid;grid-template-columns:1fr 1px 360px;gap:30px;border-top:3px double #171512;padding-top:20px">
+      <div>
+        <div style="font-size:15px;font-style:italic;color:#3b362c;padding-bottom:18px;max-width:560px">Enter the details from your application. Registrars publish the basis of allotment on the estimated allotment date; before then the check returns no record.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+          <div>
+            <div style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.16em;text-transform:uppercase;padding-bottom:5px">Issue</div>
+            <div style="border:1px solid #171512;background:#fdfbf4;padding:9px 11px;font-size:15px">Symbiotec Pharmalab Limited</div>
+          </div>
+          <div>
+            <div style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.16em;text-transform:uppercase;padding-bottom:5px">Registrar</div>
+            <div style="border:1px solid #171512;background:#fdfbf4;padding:9px 11px;font-size:15px">MUFG Intime India</div>
+          </div>
+          <div>
+            <div style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.16em;text-transform:uppercase;padding-bottom:5px">PAN</div>
+            <div style="border:1px solid #171512;background:#fdfbf4;padding:9px 11px;font-size:15px;font-family:'Archivo',sans-serif;letter-spacing:.14em;color:#8c8264">A B C D E 1 2 3 4 F</div>
+          </div>
+          <div>
+            <div style="font-family:'Archivo',sans-serif;font-size:9px;letter-spacing:.16em;text-transform:uppercase;padding-bottom:5px">Application number</div>
+            <div style="border:1px solid #171512;background:#fdfbf4;padding:9px 11px;font-size:15px;color:#8c8264">Optional</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:center;padding-top:18px">
+          <span style="background:#171512;color:#f7f4ea;font-family:'Archivo',sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;padding:10px 22px;cursor:pointer" onClick="{{ runCheck }}">Check status</span>
+          <span style="font-size:13px;font-style:italic;color:#4a4438">{{ checkNote }}</span>
+        </div>
+        <div style="background:#e9e5d7;margin-top:24px;padding:18px 20px">
+          <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding-bottom:6px">Reading the odds before allotment</div>
+          <div style="font-size:14px;text-align:justify;color:#2c2822">For Symbiotec Pharmalab, retail holds 50.00% of the public book with 4,36,318 possible allottees against a 65,44,776-share pool, and the live estimate stands at least 100% with a valid bid. The sNII pool of 9,34,968 shares carries 4,452 possible allottees, an estimated floor of about one in 1.6.</div>
+        </div>
+      </div>
+      <div style="background:#171512"></div>
+      <div>
+        <div style="border-top:2px solid #171512;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 0 10px">Allotment dates ahead</div>
+        <sc-for list="{{ allotmentDates }}" as="row" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #cfc8b4">
+            <span style="font-size:15px">{{ row.name }}</span>
+            <span style="font-family:'Archivo',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap">{{ row.date }}</span>
+          </div>
+        </sc-for>
+        <div style="border-top:2px solid #171512;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding:5px 0 10px;margin-top:22px">Registrar records</div>
+        <div style="font-size:14px;padding:7px 0;border-bottom:1px solid #cfc8b4">MUFG Intime India Private Limited <span style="color:#8c2f1d">↗</span></div>
+        <div style="font-size:14px;padding:7px 0;border-bottom:1px solid #cfc8b4">Bigshare Services <span style="color:#8c2f1d">↗</span></div>
+        <div style="font-size:14px;padding:7px 0;border-bottom:1px solid #cfc8b4">KFin Technologies <span style="color:#8c2f1d">↗</span></div>
+        <div style="font-size:13px;font-style:italic;color:#4a4438;padding-top:12px">The gazette does not store PAN data. Checks are passed to the registrar's own record.</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isAbout }}" hint-placeholder-val="{{ false }}">
+  <div>
+    <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#8c2f1d">Colophon</div>
+    <div style="font-family:'Bodoni Moda',serif;font-size:54px;line-height:1.05;padding:4px 0 18px">About &amp; Method</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px;border-top:3px double #171512;padding-top:20px">
+      <div>
+        <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding-bottom:8px">What this is</div>
+        <div style="font-size:14px;text-align:justify;color:#2c2822">IPO Milega publishes current, upcoming and recently listed IPOs across NSE, BSE and both SME platforms, drawn from the exchanges. Master data is refreshed daily at 7:30 pm IST; subscription figures follow the exchange tape every five minutes while an issue is open.</div>
+      </div>
+      <div>
+        <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding-bottom:8px">Where the numbers come from</div>
+        <div style="font-size:14px;text-align:justify;color:#2c2822">Every issue record keeps its source trail: the NSE and BSE listings it was reconciled from, the registrar of record, and the timestamp of the last refresh. Dates marked estimated follow the standard exchange timeline until the exchange reports them.</div>
+      </div>
+      <div>
+        <div style="font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.18em;text-transform:uppercase;padding-bottom:8px">Write to the desk</div>
+        <div style="font-size:14px;color:#2c2822">ipomilega.in<br />hello@ipomilega.in</div>
+        <div style="font-size:13px;font-style:italic;color:#4a4438;padding-top:12px">Corrections are welcome. Cite the issue and the exchange record you are reading against.</div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #171512;margin-top:26px;padding-top:14px;font-family:'EB Garamond',serif;font-style:italic;font-size:15px">Information only. IPO Milega does not provide investment advice or recommend securities.</div>
+  </div>
+  </sc-if>
+
+  <div style="border-top:3px double #171512;margin-top:34px;padding-top:12px;display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#5c5648">
+    <span>IPO Milega Gazette · Nº {{ editionNo }}</span>
+    <span>Official-source IPO information, organized for clarity</span>
+    <span>Information only · not investment advice</span>
+  </div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;editionNo&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;001&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;showFigureBars&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;defaultStatusFilter&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;All&quot;,&quot;Open&quot;,&quot;Upcoming&quot;,&quot;Closed&quot;,&quot;Listed&quot;],&quot;default&quot;:&quot;All&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const IPOS = [
+  { slug:'lumino', name:'Lumino Industries Limited', mon:'Aug', day:'26', status:'Upcoming', exch:'NSE', band:'₹78.00 – ₹82.00', lot:'182', closes:'30 Aug', seg:'Mainboard' },
+  { slug:'annu', name:'Annu Projects Limited', mon:'Aug', day:'24', status:'Upcoming', exch:'NSE · BSE', band:'₹94.00 – ₹99.00', lot:'151', closes:'27 Aug', seg:'Mainboard' },
+  { slug:'sumax', name:'Sumax Engineering Limited', mon:'Aug', day:'24', status:'Upcoming', exch:'NSE SME', band:'₹95.00 – ₹101.00', lot:'1,200', closes:'27 Aug', seg:'SME' },
+  { slug:'madhur', name:'Madhur Knit Crafts Limited', mon:'Aug', day:'23', status:'Open', exch:'NSE SME', band:'₹95.00 – ₹100.00', lot:'1,200', closes:'26 Aug', seg:'SME' },
+  { slug:'hytech', name:'Hy Tech Engineers Limited', mon:'Aug', day:'23', status:'Open', exch:'NSE · BSE', band:'₹50.00 – ₹53.00', lot:'283', closes:'26 Aug', seg:'Mainboard' },
+  { slug:'abh', name:'ABH Healthcare Limited', mon:'Aug', day:'23', status:'Open', exch:'NSE SME', band:'₹96.00 – ₹102.00', lot:'1,200', closes:'26 Aug', seg:'SME' },
+  { slug:'symbiotec', name:'Symbiotec Pharmalab Limited', mon:'Aug', day:'23', status:'Open', exch:'NSE · BSE', band:'₹938.00 – ₹988.00', lot:'15', closes:'26 Aug', seg:'Mainboard' },
+  { slug:'skyways', name:'Skyways Air Services Limited', mon:'Aug', day:'23', status:'Open', exch:'NSE · BSE', band:'₹131.00 – ₹138.00', lot:'100', closes:'26 Aug', seg:'Mainboard' },
+  { slug:'augmont', name:'Augmont Enterprises Limited', mon:'Aug', day:'20', status:'Open', exch:'NSE · BSE', band:'₹750.00 – ₹788.00', lot:'19', closes:'24 Aug', seg:'Mainboard' },
+  { slug:'tempsens', name:'Tempsens Instruments (India) Limited', mon:'Aug', day:'20', status:'Closed', exch:'NSE · BSE', band:'₹285.00 – ₹300.00', lot:'50', closes:'24 Aug', seg:'Mainboard' },
+  { slug:'dhanwel', name:'Dhanwel Hybrid Seeds Limited', mon:'Aug', day:'18', status:'Closed', exch:'BSE SME', band:'₹95.00 – ₹99.00', lot:'1,200', closes:'20 Aug', seg:'SME' },
+  { slug:'gaja', name:'Gaja Alternative Asset Management', mon:'Aug', day:'18', status:'Closed', exch:'NSE · BSE', band:'₹152.00 – ₹160.00', lot:'93', closes:'20 Aug', seg:'Mainboard' },
+  { slug:'sunshine', name:'Sunshine Pictures Limited', mon:'Aug', day:'17', status:'Closed', exch:'NSE · BSE', band:'₹342.00 – ₹360.00', lot:'41', closes:'19 Aug', seg:'Mainboard' },
+  { slug:'shankesh', name:'Shankesh Jewellers Limited', mon:'Aug', day:'17', status:'Closed', exch:'NSE · BSE', band:'₹88.00 – ₹93.00', lot:'160', closes:'19 Aug', seg:'Mainboard' },
+  { slug:'lalithaa', name:'Lalithaa Jewellery Mart Ltd', mon:'Aug', day:'16', status:'Listed', exch:'NSE · BSE', band:'₹190.00 – ₹201.00', lot:'74', closes:'18 Aug', seg:'Mainboard' },
+  { slug:'horizon', name:'Horizon Industrial Parks Ltd', mon:'Aug', day:'16', status:'Listed', exch:'NSE · BSE', band:'₹57.00 – ₹60.00', lot:'250', closes:'18 Aug', seg:'Mainboard' },
+  { slug:'skytech', name:'Skytech Infinite Platform Limited', mon:'Aug', day:'13', status:'Listed', exch:'NSE SME', band:'₹77.00', lot:'TBA', closes:'17 Aug', seg:'SME' },
+  { slug:'technocrats', name:'Technocrats Plasma Systems Ltd', mon:'Aug', day:'13', status:'Listed', exch:'BSE SME', band:'₹125.00 – ₹132.00', lot:'1,000', closes:'17 Aug', seg:'SME' },
+  { slug:'ens', name:'ENS Enterprises Ltd', mon:'Aug', day:'13', status:'Listed', exch:'BSE SME', band:'₹87.00 – ₹92.00', lot:'1,200', closes:'17 Aug', seg:'SME' },
+  { slug:'credent', name:'Credent Connect N Care Limited', mon:'Aug', day:'12', status:'Listed', exch:'NSE SME', band:'₹189.00', lot:'TBA', closes:'16 Aug', seg:'SME' }
+];
+
+const SUBS = [
+  { label:'Total', x:'0.8', cover:0.8, bids:'1,05,37,575', reserved:'1,31,24,929', chg:'+0.01×' },
+  { label:'QIB', x:'0.35', cover:0.35, bids:'13,26,390', reserved:'37,39,872', chg:'No change' },
+  { label:'NII', x:'1.04', cover:1.04, bids:'29,26,920', reserved:'28,04,904', chg:'+0.01×' },
+  { label:'bNII', x:'0.78', cover:0.78, bids:'14,51,265', reserved:'18,69,936', chg:'No change' },
+  { label:'sNII', x:'1.58', cover:1.58, bids:'14,75,655', reserved:'9,34,968', chg:'+0.01×' },
+  { label:'Retail', x:'0.95', cover:0.95, bids:'62,29,230', reserved:'65,44,776', chg:'+0.01×' },
+  { label:'Employee', x:'1.56', cover:1.56, bids:'55,035', reserved:'35,377', chg:'+0.03×' }
+];
+
+const SYM_DETAIL = {
+  listing: 'NSE Mainboard · BSE Mainboard',
+  upper: '₹988.00',
+  hasProfile: false,
+  hasDossier: false,
+  overall: '0.8',
+  overallNote: 'Building toward full cover · 1,05,37,575 confirmed bids against 1,31,24,929 reserved shares',
+  tape: 'Exchange timestamp 24 Aug 2026, 5:00 pm · checked 5:35 pm · 78 exchange updates',
+  pools: [
+    { cat:'Retail investors', note:'Applications up to ₹2 lakh', pool:'65,44,776', allottees:'4,36,318', pct:'50.00% of public book', est:'At least 100% · likely with a valid bid' },
+    { cat:'Non-institutional', note:'Applications above ₹2 lakh', pool:'28,04,904', allottees:'Not reported', pct:'21.43% of public book', est:'—' },
+    { cat:'bNII', note:'Above ₹10 lakh', pool:'18,69,936', allottees:'8,904', pct:'14.25% of issue', est:'At least 100% · likely with a valid bid' },
+    { cat:'sNII', note:'₹2 – 10 lakh', pool:'9,34,968', allottees:'4,452', pct:'7.12% of issue', est:'At least 63% · about 1 in 1.6' },
+    { cat:'Qualified institutional', note:'QIB book', pool:'37,39,872', allottees:'Not reported', pct:'28.57% of issue', est:'—' },
+    { cat:'Employee', note:'Reservation', pool:'35,377', allottees:'Not reported', pct:'0.27% of issue', est:'—' }
+  ],
+  timetable: [
+    { n:'01', label:'IPO opens', date:'23 Aug 2026 · Sunday', note:'' },
+    { n:'02', label:'IPO closes', date:'26 Aug 2026 · Wednesday', note:'' },
+    { n:'03', label:'Allotment', date:'27 Aug 2026 · Thursday', note:'Estimated' },
+    { n:'04', label:'Refunds', date:'30 Aug 2026 · Sunday', note:'Estimated' },
+    { n:'05', label:'Shares credited', date:'30 Aug 2026 · Sunday', note:'Estimated' },
+    { n:'06', label:'Listing day', date:'31 Aug 2026 · Monday', note:'Estimated' }
+  ],
+  facts: [
+    { k:'IPO date', v:'23 – 26 Aug 2026' },
+    { k:'Listing date', v:'To be announced' },
+    { k:'Face value', v:'₹2.00 per share' },
+    { k:'Lot size', v:'15 shares' },
+    { k:'Issue type', v:'Book building IPO' },
+    { k:'Total issue', v:'1,31,24,929 shares' },
+    { k:'Public book', v:'1,30,89,552 shares' },
+    { k:'Registrar', v:'MUFG Intime India' },
+    { k:'Master-data refresh', v:'24 Aug 2026, 5:36 pm' }
+  ],
+  appSizes: [
+    { cat:'Retail', kind:'entry', lots:'1', shares:'15 sh', amt:'₹14,820' },
+    { cat:'Retail', kind:'ceiling', lots:'13', shares:'195 sh', amt:'₹1,92,660' },
+    { cat:'sNII', kind:'entry', lots:'14', shares:'210 sh', amt:'₹2,07,480' },
+    { cat:'sNII', kind:'ceiling', lots:'67', shares:'1,005 sh', amt:'₹9,92,940' },
+    { cat:'bNII', kind:'entry', lots:'68', shares:'1,020 sh', amt:'₹10,07,760' }
+  ],
+  docs: ['Red herring prospectus', 'Security parameters (pre anchor)', 'Security parameters (post anchor)', 'Anchor allocation report', 'NSE exchange record', 'BSE exchange record']
+};
+
+const TEMP_DETAIL = {
+  listing: 'NSE Mainboard · BSE Mainboard',
+  upper: '₹300.00',
+  hasProfile: true,
+  hasDossier: true,
+  reviewed: 'Human reviewed · 24 Aug 2026',
+  sector: 'Thermal engineering and specialised cable solutions',
+  profile: 'We are a thermal engineering and specialised cable manufacturer, engaged in the design and manufacture of customized temperature sensing solutions, electrical heating solutions and specialised cables. Our offerings are tailored to address each customer\u2019s technical requirements.',
+  products: ['Thermocouple', 'Resistance Temperature Detector (RTD)', 'Infrared Pyrometer', 'Online Thermal Imager', 'Furnace Monitoring Camera', 'Temperature and Pressure Gauge', 'Temperature Calibrator', 'Immersion Heater'],
+  productsNote: '+12 more in the RHP',
+  glance: [
+    { k: 'Customer concentration', v: '18.59%', n: 'top 10 customers' },
+    { k: 'Total borrowings', v: '₹779.48 mn', n: 'FY 2026' }
+  ],
+  timetable: [
+    { n:'01', label:'IPO opens', date:'19 Aug 2026 · Wednesday', note:'' },
+    { n:'02', label:'IPO closes', date:'23 Aug 2026 · Sunday', note:'' },
+    { n:'03', label:'Allotment', date:'24 Aug 2026 · Monday', note:'Estimated' },
+    { n:'04', label:'Refunds', date:'25 Aug 2026 · Tuesday', note:'Estimated' },
+    { n:'05', label:'Shares credited', date:'25 Aug 2026 · Tuesday', note:'Estimated' },
+    { n:'06', label:'Listing day', date:'26 Aug 2026 · Wednesday', note:'Estimated' }
+  ],
+  facts: [
+    { k:'IPO date', v:'19 – 23 Aug 2026' },
+    { k:'Listing date', v:'To be announced' },
+    { k:'Face value', v:'₹4.00 per share' },
+    { k:'Lot size', v:'50 shares' },
+    { k:'Issue type', v:'Book building IPO' },
+    { k:'Total issue', v:'1,51,81,667 shares' },
+    { k:'Public book', v:'1,51,31,667 shares' },
+    { k:'Employee reserved', v:'50,000 shares' },
+    { k:'Registrar', v:'KFin Technologies Limited' },
+    { k:'Master-data refresh', v:'24 Aug 2026, 6:35 pm' }
+  ],
+  pools: [
+    { cat:'Retail investors', note:'Applications up to ₹2 lakh', pool:'75,65,834', allottees:'1,51,316', pct:'50.00% of public book', est:'At least 1.6% · about 1 in 61' },
+    { cat:'Non-institutional', note:'Applications above ₹2 lakh', pool:'32,42,500', allottees:'Not reported', pct:'21.43% of public book', est:'—' },
+    { cat:'bNII', note:'Above ₹10 lakh', pool:'21,61,667', allottees:'3,088', pct:'14.24% of issue', est:'At least 1.4% · about 1 in 69' },
+    { cat:'sNII', note:'₹2 – 10 lakh', pool:'10,80,833', allottees:'1,544', pct:'7.12% of issue', est:'At least 0.4% · about 1 in 281' },
+    { cat:'Qualified institutional', note:'QIB book', pool:'43,23,333', allottees:'Not reported', pct:'28.57% of issue', est:'—' },
+    { cat:'Employee', note:'Reservation', pool:'50,000', allottees:'Not reported', pct:'0.33% of issue', est:'—' }
+  ],
+  appSizes: [
+    { cat:'Retail', kind:'entry', lots:'1', shares:'50 sh', amt:'₹15,000' },
+    { cat:'Retail', kind:'ceiling', lots:'13', shares:'650 sh', amt:'₹1,95,000' },
+    { cat:'sNII', kind:'entry', lots:'14', shares:'700 sh', amt:'₹2,10,000' },
+    { cat:'sNII', kind:'ceiling', lots:'66', shares:'3,300 sh', amt:'₹9,90,000' },
+    { cat:'bNII', kind:'entry', lots:'67', shares:'3,350 sh', amt:'₹10,05,000' }
+  ],
+  financials: [
+    { fy:'2026', rev:'₹4,448.78 mn', pat:'₹710.67 mn', ocf:'₹420.22 mn', debt:'₹779.48 mn', nw:'₹5,254.75 mn' },
+    { fy:'2025', rev:'₹3,785.26 mn', pat:'₹625.55 mn', ocf:'₹541.50 mn', debt:'₹718.34 mn', nw:'₹4,416.79 mn' },
+    { fy:'2024', rev:'₹2,748.10 mn', pat:'₹409.19 mn', ocf:'₹370.89 mn', debt:'₹301.31 mn', nw:'₹2,048.05 mn' }
+  ],
+  funds: [
+    { n:'01', t:'Funding certain capital expenditure of our Company towards our (i) electrical heating solutions; and (ii) specialized cable solutions', p:'RHP p. 128' },
+    { n:'02', t:'Pre-payment or scheduled re-payment, in full or in part, of certain outstanding borrowings availed by our Company', p:'RHP p. 128' },
+    { n:'03', t:'General corporate purposes', p:'RHP p. 128' }
+  ],
+  strengths: [
+    { t:'Largest manufacturer of contact and non-contact temperature sensors in India by revenue, and one of the largest manufacturers of electrical heaters, with a focus on indigenisation resulting in high entry barriers.', p:'RHP p. 264' },
+    { t:'Diversified business model with broad product portfolio, wide industry coverage, and a balanced mix of projects and MRO revenue.', p:'RHP p. 265' },
+    { t:'Established research and development capabilities enabling customized, critical solutions and innovation.', p:'RHP p. 267' },
+    { t:'Global presence through strategic alliances, diverse customer base, export sales and long-standing customer relationships.', p:'RHP p. 268' },
+    { t:'Integrated global operations featuring backward integration, digital traceability and stringent quality control.', p:'RHP p. 270' },
+    { t:'Expanding and commercialising new products by leveraging R&D capabilities and technological partnerships.', p:'RHP p. 272' },
+    { t:'Scaling established product lines: process heating, conductor solutions and infrared technology.', p:'RHP p. 272' },
+    { t:'Maintaining and expanding global presence and export sales.', p:'RHP p. 273' }
+  ],
+  risks: [
+    { n:'01', tag:'Operations', t:'Dependence on projects / OEM business', b:'Projects and OEM business contributed 67.55%, 69.16% and 63.99% of revenue from operations (excluding scrap sale and export incentive) for Fiscals 2026, 2025 and 2024 respectively.' },
+    { n:'02', tag:'Geography', t:'Concentration of end-user industries', b:'Performance is influenced by demand in certain end-user industries, in particular metal and petrochemical, which together contributed 41.13%, 42.90% and 41.52% of revenue from operations.' },
+    { n:'03', tag:'Operations', t:'Manufacturing concentration at Udaipur', b:'Significant concentration of manufacturing units at Udaipur, Rajasthan, and operating risks at both domestic and international units, could result in disruptions.' }
+  ],
+  docs: ['Red herring prospectus', 'RHP — Tempsens Instruments (India) Limited', 'Security parameters (pre anchor)', 'Security parameters (post anchor)', 'Anchor allocation report', 'NSE exchange record', 'BSE exchange record'],
+  overall: '184.07',
+  overallNote: 'Issue fully covered · 2,79,44,56,200 confirmed bids against 1,51,81,667 reserved shares',
+  tape: 'Exchange timestamp 24 Aug 2026, 6:30 pm · checked 6:35 pm · 230 exchange updates',
+  subs: [
+    { label:'Total', x:'184.07', cover:184.07, bids:'2,79,44,56,200', reserved:'1,51,81,667', chg:'No change' },
+    { label:'QIB', x:'302.88', cover:302.88, bids:'1,30,94,62,300', reserved:'43,23,333', chg:'No change' },
+    { label:'NII', x:'314.44', cover:314.44, bids:'1,01,95,83,800', reserved:'32,42,500', chg:'No change' },
+    { label:'bNII', x:'331.34', cover:331.34, bids:'71,62,41,200', reserved:'21,61,667', chg:'No change' },
+    { label:'sNII', x:'280.66', cover:280.66, bids:'30,33,42,600', reserved:'10,80,833', chg:'No change' },
+    { label:'Retail', x:'60.69', cover:60.69, bids:'45,91,62,800', reserved:'75,65,834', chg:'No change' },
+    { label:'Employee', x:'124.95', cover:124.95, bids:'62,47,300', reserved:'50,000', chg:'No change' }
+  ]
+};
+
+const CALENDAR = [
+  { day:'24', mon:'Aug', weekday:'Monday', events:[
+    { kind:'Opens', name:'Annu Projects Limited', exch:'NSE · BSE Mainboard' },
+    { kind:'Opens', name:'Sumax Engineering Limited', exch:'NSE SME' },
+    { kind:'Closes', name:'Augmont Enterprises Limited', exch:'NSE · BSE Mainboard' }
+  ]},
+  { day:'26', mon:'Aug', weekday:'Wednesday', events:[
+    { kind:'Opens', name:'Lumino Industries Limited', exch:'NSE Mainboard' },
+    { kind:'Closes', name:'Symbiotec Pharmalab Limited', exch:'NSE · BSE Mainboard' },
+    { kind:'Closes', name:'Madhur Knit Crafts Limited', exch:'NSE SME' },
+    { kind:'Closes', name:'ABH Healthcare Limited', exch:'NSE SME' },
+    { kind:'Closes', name:'Hy Tech Engineers Limited', exch:'NSE · BSE Mainboard' },
+    { kind:'Closes', name:'Skyways Air Services Limited', exch:'NSE · BSE Mainboard' }
+  ]},
+  { day:'27', mon:'Aug', weekday:'Thursday', events:[
+    { kind:'Allotment', name:'Symbiotec Pharmalab Limited', exch:'Estimated' },
+    { kind:'Closes', name:'Annu Projects Limited', exch:'NSE · BSE Mainboard' },
+    { kind:'Closes', name:'Sumax Engineering Limited', exch:'NSE SME' }
+  ]},
+  { day:'30', mon:'Aug', weekday:'Sunday', events:[
+    { kind:'Refunds', name:'Symbiotec Pharmalab Limited', exch:'Estimated' },
+    { kind:'Credit', name:'Symbiotec Pharmalab Limited', exch:'Estimated' },
+    { kind:'Closes', name:'Lumino Industries Limited', exch:'NSE Mainboard' }
+  ]},
+  { day:'31', mon:'Aug', weekday:'Monday', events:[
+    { kind:'Listing', name:'Symbiotec Pharmalab Limited', exch:'Estimated · NSE · BSE' }
+  ]}
+];
+
+SYM_DETAIL.subs = SUBS;
+const DETAILS = { symbiotec: SYM_DETAIL, tempsens: TEMP_DETAIL };
+
+class Component extends DCLogic {
+  state = { page: 'home', slug: 'tempsens', filter: null, checked: false };
+
+  go = (page) => () => this.setState({ page: page });
+  open = (slug) => () => this.setState({ page: 'detail', slug: slug });
+
+  renderVals() {
+    const page = this.state.page;
+    const filter = this.state.filter || this.props.defaultStatusFilter || 'All';
+    const bars = this.props.showFigureBars !== false;
+    const scale = (rows) => {
+      const max = rows.reduce((m, r) => Math.max(m, r.cover), 0) || 1;
+      return rows.map(r => Object.assign({}, r, { w: bars ? Math.max(3, r.cover / max * 100) + '%' : '0px' }));
+    };
+    const width = (cover) => bars ? Math.max(4, Math.min(100, cover / 2 * 100)) + '%' : '0px';
+
+    const nav = [
+      ['home', 'Front page'], ['board', 'Directory'], ['detail', 'Issue record'],
+      ['book', 'Subscription'], ['calendar', 'Calendar'], ['allotment', 'Allotment'], ['about', 'About']
+    ].map(([id, label]) => ({ label: label, active: page === id, go: this.go(id) }));
+
+    const withGo = (r) => Object.assign({}, r, { go: this.open(r.slug) });
+    const boardRows = IPOS.filter(r => filter === 'All' || r.status === filter).map(withGo);
+    const sel = Object.assign({}, IPOS.find(r => r.slug === this.state.slug) || IPOS[9]);
+    Object.assign(sel, DETAILS[sel.slug] || {
+      hasProfile: false, hasDossier: false, subs: [], pools: [],
+      overall: '—', overallNote: 'Subscription not yet reported by the exchange.',
+      tape: 'No exchange tape for this issue yet.',
+      listing: sel.exch, upper: sel.band.split('–').pop().trim(),
+      timetable: [
+        { n:'01', label:'IPO opens', date: sel.mon + ' ' + sel.day + ' 2026', note:'' },
+        { n:'02', label:'IPO closes', date: sel.closes + ' 2026', note:'' },
+        { n:'03', label:'Allotment', date:'Not yet reported', note:'Estimated' }
+      ],
+      facts: [
+        { k:'Status', v: sel.status }, { k:'Segment', v: sel.seg }, { k:'Listing at', v: sel.exch },
+        { k:'Price band', v: sel.band }, { k:'Lot size', v: sel.lot + ' shares' },
+        { k:'Issue type', v:'Book building IPO' }, { k:'Master-data refresh', v:'24 Aug 2026, 5:36 pm' }
+      ],
+      appSizes: [{ cat:'Retail', kind:'entry', lots:'1', shares: sel.lot + ' sh', amt:'Per band' }],
+      docs: ['NSE exchange record', 'BSE exchange record']
+    });
+
+    return {
+      editionNo: this.props.editionNo || '001',
+      nav: nav,
+      isHome: page === 'home', isBoard: page === 'board', isDetail: page === 'detail',
+      isBook: page === 'book', isCalendar: page === 'calendar',
+      isAllotment: page === 'allotment', isAbout: page === 'about',
+      goBoard: this.go('board'), goBook: this.go('book'), openLead: this.open('symbiotec'),
+      leadSubs: SUBS.filter(s => s.label !== 'Employee').map(s => ({ label: s.label, x: s.x, w: width(s.cover) })),
+      bookRows: scale(sel.subs || []),
+      hasBook: (sel.subs || []).length > 0,
+      noBook: (sel.subs || []).length === 0,
+      openList: IPOS.filter(r => r.status === 'Open').slice(0, 5).map(withGo),
+      upcomingList: IPOS.filter(r => r.status === 'Upcoming').map(withGo),
+      boardRows: boardRows,
+      boardCount: boardRows.length,
+      filters: ['All', 'Open', 'Upcoming', 'Closed', 'Listed'].map(f => ({
+        label: f, active: filter === f, idle: filter !== f, go: () => this.setState({ filter: f })
+      })),
+      sel: sel,
+      calendar: CALENDAR,
+      allotmentDates: [
+        { name:'Symbiotec Pharmalab Limited', date:'27 Aug · est.' },
+        { name:'Madhur Knit Crafts Limited', date:'27 Aug · est.' },
+        { name:'Hy Tech Engineers Limited', date:'27 Aug · est.' },
+        { name:'Annu Projects Limited', date:'28 Aug · est.' }
+      ],
+      runCheck: () => this.setState({ checked: true }),
+      checkNote: this.state.checked
+        ? 'No record yet — the registrar publishes the basis of allotment on 27 Aug.'
+        : 'Available from the estimated allotment date.',
+      forceUpdateKey: 1
+    };
+  }
+}
+</script>
+</body>
+</html>

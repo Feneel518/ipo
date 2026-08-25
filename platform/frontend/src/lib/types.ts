@@ -120,6 +120,15 @@ export interface RhpAnalysis {
   risks: Array<{ title: string; category: string; description: string; sources: RhpEvidence[] }>;
 }
 
+export interface RhpCalculatedMetric {
+  metric: string;
+  financial_year: string | null;
+  numeric_value: string | null;
+  text_value: string | null;
+  unit: "PERCENT" | "RATIO" | string | null;
+  status: RhpFieldStatus;
+}
+
 export interface IpoCardData {
   id: number;
   company_name: string;
@@ -156,6 +165,11 @@ export interface Subscription {
   bid_data_scope?: "ALL_EXCHANGES" | "NSE_DISCOVERY" | "BSE_ONLY" | "LEGACY";
 }
 
+export type SubscriptionMomentumRow = Pick<
+  Subscription,
+  "exchange" | "bid_data_scope" | "captured_at" | "observed_at" | "category" | "calculated_subscription"
+>;
+
 export interface IpoDetailData extends IpoCardData {
   isin: string | null;
   issue_type: string;
@@ -182,6 +196,7 @@ export interface IpoDetailData extends IpoCardData {
   reservation_summary: ReservationSummary | null;
   lot_size_applications: LotApplication[];
   rhp_analysis: RhpAnalysis | null;
+  rhp_calculated_metrics: RhpCalculatedMetric[];
   rhp_analysis_status: "READY" | "APPROVED" | null;
   rhp_approved_at: string | null;
   master_data_last_fetched_at: string | null;
@@ -199,6 +214,7 @@ export interface Summary {
   open: number;
   upcoming: number;
   listed: number;
+  listed_sme: number;
   mainboard: number;
   sme: number;
   last_updated_at: string | null;

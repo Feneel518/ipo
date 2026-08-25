@@ -14,13 +14,16 @@ from sqlalchemy.orm import selectinload
 from app.config import Settings, get_settings
 from app.db import SessionLocal
 from app.ingestion.rhp_storage import DownloadedPdf, _download_stored_pdf
+from app.lifecycle import effective_lifecycle_expression
 from app.models import (
     IpoDocument,
     IpoExtractionJob,
     IpoExtractionRun,
     IpoMetric,
+    Lifecycle,
     RhpProcessingFile,
 )
+from app.services.rhp.calculations import calculate_metrics
 from app.services.rhp.gemini import (
     GeminiConfigurationError,
     GeminiFileProcessingError,
@@ -34,7 +37,7 @@ from app.services.rhp.gemini import (
 )
 from app.services.rhp.prompts import PROMPT_VERSION
 from app.services.rhp.schema import SCHEMA_VERSION, RhpExtractionV1
-from app.services.rhp.validation import normalize_extraction, validate_extraction
+from app.services.rhp.validation import CanonicalMetric, normalize_extraction, validate_extraction
 
 logger = logging.getLogger(__name__)
 RETRY_DELAYS = (30, 120, 600)
@@ -61,11 +64,19 @@ def enqueue_ready_extractions(
             IpoExtractionJob.schema_version == settings.rhp_schema_version,
         )
     )
+    current_lifecycle = effective_lifecycle_expression()
     with SessionLocal() as db:
         target_document = IpoDocument.id == document_id if document_id is not None else true()
+        target_lifecycle = (
+            true()
+            if document_id is not None
+            else current_lifecycle.in_([Lifecycle.UPCOMING, Lifecycle.OPEN])
+        )
         documents = db.scalars(
             select(IpoDocument)
+            .join(IpoDocument.ipo)
             .where(
+                target_lifecycle,
                 IpoDocument.storage_status == "STORED",
                 target_document,
                 IpoDocument.content_sha256.is_not(None),
@@ -129,17 +140,26 @@ def requeue_extraction(
 def claim_next_extraction_job(*, document_id: int | None = None) -> int | None:
     """Claim one due job using PostgreSQL row locking for worker concurrency."""
     now = datetime.now(UTC)
+    current_lifecycle = effective_lifecycle_expression()
     with SessionLocal() as db:
         target_document = (
             IpoExtractionJob.document_id == document_id
             if document_id is not None
             else true()
         )
+        target_lifecycle = (
+            true()
+            if document_id is not None
+            else current_lifecycle.in_([Lifecycle.UPCOMING, Lifecycle.OPEN])
+        )
         job = db.scalar(
             select(IpoExtractionJob)
+            .join(IpoExtractionJob.document)
+            .join(IpoDocument.ipo)
             .where(
                 IpoExtractionJob.status.in_(["QUEUED", "RETRY"]),
                 target_document,
+                target_lifecycle,
                 IpoExtractionJob.attempts < IpoExtractionJob.max_attempts,
                 or_(
                     IpoExtractionJob.next_attempt_at.is_(None),
@@ -277,7 +297,8 @@ def _save_success(work: dict, run_id: int, generated) -> str:
         run.request_count = generated.request_count
         run.status = final_status
         run.completed_at = datetime.now(UTC)
-        for metric in normalize_extraction(generated.extraction, issues=issues):
+        reported_metrics = normalize_extraction(generated.extraction, issues=issues)
+        for metric in [*reported_metrics, *calculate_metrics(reported_metrics)]:
             run.metrics.append(
                 IpoMetric(
                     ipo_id=work["ipo_id"],
@@ -287,7 +308,7 @@ def _save_success(work: dict, run_id: int, generated) -> str:
                     numeric_value=metric.numeric_value,
                     text_value=metric.text_value,
                     unit=metric.unit,
-                    source="RHP",
+                    source=metric.source,
                     status=metric.status,
                     provenance=metric.provenance,
                     verification_status="UNVERIFIED",
@@ -353,7 +374,8 @@ def revalidate_stored_extractions(
             )
             run.metrics.clear()
             db.flush()
-            for metric in normalize_extraction(extraction, issues=issues):
+            reported_metrics = normalize_extraction(extraction, issues=issues)
+            for metric in [*reported_metrics, *calculate_metrics(reported_metrics)]:
                 run.metrics.append(
                     IpoMetric(
                         ipo_id=run.document.ipo_id,
@@ -363,7 +385,7 @@ def revalidate_stored_extractions(
                         numeric_value=metric.numeric_value,
                         text_value=metric.text_value,
                         unit=metric.unit,
-                        source="RHP",
+                        source=metric.source,
                         status=metric.status,
                         provenance=metric.provenance,
                         verification_status="UNVERIFIED",
@@ -377,6 +399,72 @@ def revalidate_stored_extractions(
             warning_runs += bool(issues)
         db.commit()
     return checked, warning_runs
+
+
+def refresh_calculated_metrics() -> tuple[int, int]:
+    """Refresh derived rows without changing reported facts or review state."""
+    refreshed_runs = 0
+    calculated_rows = 0
+    with SessionLocal() as db:
+        runs = db.scalars(
+            select(IpoExtractionRun)
+            .options(selectinload(IpoExtractionRun.metrics))
+            .where(
+                IpoExtractionRun.status.in_(
+                    ["READY", "READY_WITH_WARNINGS", "REVIEWED", "APPROVED"]
+                )
+            )
+            .order_by(IpoExtractionRun.id)
+        ).all()
+        for run in runs:
+            reported = [
+                CanonicalMetric(
+                    metric=metric.metric,
+                    financial_year=metric.financial_year,
+                    numeric_value=metric.numeric_value,
+                    text_value=metric.text_value,
+                    unit=metric.unit,
+                    status=metric.status,
+                    provenance=metric.provenance,
+                    source=metric.source,
+                )
+                for metric in run.metrics
+                if metric.source == "RHP"
+            ]
+            if not any(metric.financial_year for metric in reported):
+                continue
+            for metric in list(run.metrics):
+                if metric.source == "CALCULATED":
+                    db.delete(metric)
+            db.flush()
+            verification_status = (
+                "APPROVED"
+                if run.status == "APPROVED"
+                else "REVIEWED"
+                if run.status == "REVIEWED"
+                else "UNVERIFIED"
+            )
+            derived = calculate_metrics(reported)
+            for metric in derived:
+                run.metrics.append(
+                    IpoMetric(
+                        ipo_id=run.document.ipo_id,
+                        document_id=run.document_id,
+                        metric=metric.metric,
+                        financial_year=metric.financial_year,
+                        numeric_value=metric.numeric_value,
+                        text_value=metric.text_value,
+                        unit=metric.unit,
+                        source=metric.source,
+                        status=metric.status,
+                        provenance=metric.provenance,
+                        verification_status=verification_status,
+                    )
+                )
+            refreshed_runs += 1
+            calculated_rows += len(derived)
+        db.commit()
+    return refreshed_runs, calculated_rows
 
 
 def _classify_failure(exc: Exception, stage: str) -> tuple[str, bool]:
