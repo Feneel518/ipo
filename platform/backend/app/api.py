@@ -366,9 +366,17 @@ def rhp_review_queue(
 ) -> RhpReviewQueueOut:
     _require_internal_token(authorization, settings)
     statuses = ["READY_WITH_WARNINGS", "REVIEWED", "FAILED", "READY", "APPROVED"]
+    current_version = (
+        IpoExtractionJob.model == settings.rhp_primary_model,
+        IpoExtractionJob.prompt_version == settings.rhp_prompt_version,
+        IpoExtractionJob.schema_version == settings.rhp_schema_version,
+    )
     counts = {
         status: db.scalar(
-            select(func.count(IpoExtractionJob.id)).where(IpoExtractionJob.status == status)
+            select(func.count(IpoExtractionJob.id)).where(
+                IpoExtractionJob.status == status,
+                *current_version,
+            )
         )
         or 0
         for status in statuses
@@ -378,7 +386,9 @@ def rhp_review_queue(
         .options(
             selectinload(IpoExtractionRun.document).selectinload(IpoDocument.ipo),
         )
+        .join(IpoExtractionRun.job)
         .where(IpoExtractionRun.status.in_(["READY_WITH_WARNINGS", "REVIEWED", "FAILED"]))
+        .where(*current_version)
         .order_by(IpoExtractionRun.completed_at.desc().nullslast(), IpoExtractionRun.id.desc())
         .limit(100)
     ).all()
