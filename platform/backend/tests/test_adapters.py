@@ -25,7 +25,12 @@ def test_nse_contract_normalization():
         "fixture",
     )
     assert issue.segment == Segment.SME
-    assert issue.lifecycle in {Lifecycle.UPCOMING, Lifecycle.OPEN, Lifecycle.CLOSED}
+    assert issue.lifecycle in {
+        Lifecycle.UPCOMING,
+        Lifecycle.OPEN,
+        Lifecycle.CLOSED,
+        Lifecycle.LISTED,
+    }
     assert issue.subscriptions[0].source_reported_multiple == Decimal("2.35")
     assert issue.allotment_date.isoformat() == "2026-08-24"
     assert issue.refund_date.isoformat() == "2026-08-25"

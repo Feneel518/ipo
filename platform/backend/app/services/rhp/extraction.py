@@ -23,6 +23,7 @@ from app.models import (
     Lifecycle,
     RhpProcessingFile,
 )
+from app.services.rhp.approval import auto_approve_extraction_run
 from app.services.rhp.calculations import calculate_metrics
 from app.services.rhp.gemini import (
     GeminiConfigurationError,
@@ -595,6 +596,15 @@ def process_extraction_job(
         stage = "VALIDATING"
         _set_processing_status(job_id, run_id, stage)
         final_status = _save_success(work, run_id, generated)
+        if final_status == "READY_WITH_WARNINGS" and settings.rhp_auto_approve:
+            try:
+                auto_approve_extraction_run(run_id)
+                final_status = "APPROVED"
+            except Exception:
+                logger.exception(
+                    "rhp_auto_approval_failed",
+                    extra={"job_id": job_id, "run_id": run_id},
+                )
         logger.info(
             "rhp_extraction_completed",
             extra={

@@ -68,6 +68,7 @@ RHP_PROMPT_VERSION=rhp-v1.7
 RHP_SCHEMA_VERSION=rhp-v1.1
 RHP_EXTRACTION_BATCH_SIZE=5
 RHP_EXTRACTION_MAX_ATTEMPTS=3
+RHP_AUTO_APPROVE=true
 GEMINI_FILE_TIMEOUT_SECONDS=300
 GEMINI_FILE_POLL_SECONDS=2
 GEMINI_REQUEST_TIMEOUT_SECONDS=180
@@ -123,7 +124,9 @@ Existing unapproved Gemini runs can be backfilled without another model call:
 ipo-extract --refresh-calculated-metrics
 ```
 
-Warning-bearing runs use an explicit human approval workflow. Each warning needs an ordered
+When `RHP_AUTO_APPROVE=true`, warning-bearing runs receive auditable system ACCEPTED resolutions
+and are published immediately. Set it to `false` to use the explicit human approval workflow below.
+Each warning then needs an ordered
 disposition and audit note before the run can move from `READY_WITH_WARNINGS` to `REVIEWED`, and
 only a reviewed run can move to `APPROVED`:
 
