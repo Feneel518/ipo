@@ -76,7 +76,7 @@ export function ApplicationSizes({ ipo }: { ipo: IpoDetailData }) {
   );
 }
 
-/* Full-width section of the record: shares reserved for you. */
+/* Full-width section of the record: category reservation breakdown. */
 export function ReservedPools({ ipo, latestSubscriptions = [] }: { ipo: IpoDetailData; latestSubscriptions?: Subscription[] }) {
   const summary = ipo.reservation_summary ?? null;
   if (!summary || !summary.rows.length) return null;
@@ -117,7 +117,7 @@ export function ReservedPools({ ipo, latestSubscriptions = [] }: { ipo: IpoDetai
   }).sort((left, right) => poolOrder.indexOf(left.category) - poolOrder.indexOf(right.category));
 
   const estimate = (row: (typeof rows)[number]) => {
-    if (!showAllotmentEstimate || row.max_allottees == null) return "—";
+    if (!showAllotmentEstimate || row.max_allottees == null) return "Not available yet";
     if (row.chance == null) return "Updates when bids arrive";
     const prefix = row.chanceSource === "bid-volume-floor" ? "At least " : "";
     if (row.chance >= 100) return `${prefix}100% · likely with a valid bid`;
@@ -127,17 +127,18 @@ export function ReservedPools({ ipo, latestSubscriptions = [] }: { ipo: IpoDetai
   return (
     <section className="pools" aria-label="Shares reserved by category">
       <p className="gazette-kicker">Application field guide</p>
-      <h2>Shares reserved for you</h2>
+      <h2>Who gets how many shares</h2>
+      <p className="pools-intro">The IPO is split into separate pools for each investor category. Find the category you can apply under to see its size and estimated allotment chance.</p>
       <div className="pools-head">
         <span>Category</span><span>Pool size</span><span>Allottees</span><span>Allocation</span><span>Live estimate</span>
       </div>
       {rows.map((row) => (
         <div className="pools-row" key={row.category}>
-          <span><strong>{categoryLabel(row.category)}</strong><small>{categoryHints[row.category] ?? (row.is_derived ? "Derived" : "")}</small></span>
-          <span>{quantity(row.shares)}</span>
-          <span>{row.max_allottees == null ? "Not reported" : row.max_allottees.toLocaleString("en-IN")}</span>
-          <span>{percent(row.percentage_net ?? row.percentage_total)} of {row.percentage_net == null ? "issue" : "public book"}</span>
-          <span>{estimate(row)}</span>
+          <div className="pool-category"><strong>{categoryLabel(row.category)}</strong><small>{categoryHints[row.category] ?? (row.is_derived ? "Derived" : "")}</small></div>
+          <div className="pool-metric"><small>Pool size</small><span>{quantity(row.shares)} shares</span></div>
+          <div className="pool-metric"><small>Possible allottees</small><span>{row.max_allottees == null ? "Not reported" : row.max_allottees.toLocaleString("en-IN")}</span></div>
+          <div className="pool-metric"><small>Share of offer</small><span>{percent(row.percentage_net ?? row.percentage_total)} of {row.percentage_net == null ? "issue" : "public book"}</span></div>
+          <div className="pool-metric pool-estimate"><small>Estimated chance</small><span>{estimate(row)}</span></div>
         </div>
       ))}
       <p className="gazette-footnote">Estimate is possible allottees divided by applications. Where the exchange omits application counts, the floor assumes every bid used that category&apos;s minimum bid size. Final odds depend on valid applications and the basis of allotment.</p>
