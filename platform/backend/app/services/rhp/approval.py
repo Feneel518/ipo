@@ -9,6 +9,19 @@ from app.db import SessionLocal
 from app.models import IpoExtractionRun
 
 REVIEW_DISPOSITIONS = {"ACCEPTED", "CORRECTED", "SKIPPED"}
+AUTO_APPROVER = "system:auto-approval"
+
+
+def automatic_review_resolutions(issues: list[dict]) -> list[dict[str, str]]:
+    """Accept every issue under the operator-configured automatic policy."""
+    return [
+        {
+            "issue_code": str(issue.get("code", "UNKNOWN")),
+            "disposition": "ACCEPTED",
+            "note": "Automatically accepted by the configured RHP publication policy.",
+        }
+        for issue in issues
+    ]
 
 
 def validate_review_resolutions(
@@ -91,3 +104,52 @@ def approve_extraction_run(run_id: int, *, approver: str) -> None:
         for metric in run.metrics:
             metric.verification_status = "APPROVED"
         db.commit()
+
+
+def auto_approve_extraction_run(run_id: int) -> None:
+    """Apply an auditable system review and approval to a warning-bearing run."""
+    with SessionLocal() as db:
+        run = db.get(IpoExtractionRun, run_id)
+        if run is None:
+            raise ValueError(f"Extraction run {run_id} does not exist")
+        if run.status == "APPROVED":
+            return
+        if run.status == "READY_WITH_WARNINGS":
+            issues = run.validation_issues or []
+        elif run.status == "REVIEWED":
+            issues = []
+        else:
+            raise ValueError("Only READY_WITH_WARNINGS or REVIEWED runs can be auto-approved")
+    if issues:
+        review_extraction_run(
+            run_id,
+            reviewer=AUTO_APPROVER,
+            resolutions=automatic_review_resolutions(issues),
+        )
+    approve_extraction_run(run_id, approver=AUTO_APPROVER)
+
+
+def auto_approve_pending_extractions() -> tuple[int, int]:
+    """Approve pending rows for the currently configured extraction version."""
+    from app.config import get_settings
+
+    settings = get_settings()
+    with SessionLocal() as db:
+        run_ids = db.scalars(
+            select(IpoExtractionRun.id)
+            .where(
+                IpoExtractionRun.status.in_(["READY_WITH_WARNINGS", "REVIEWED"]),
+                IpoExtractionRun.model == settings.rhp_primary_model,
+                IpoExtractionRun.prompt_version == settings.rhp_prompt_version,
+                IpoExtractionRun.schema_version == settings.rhp_schema_version,
+            )
+            .order_by(IpoExtractionRun.id)
+        ).all()
+    approved = failed = 0
+    for run_id in run_ids:
+        try:
+            auto_approve_extraction_run(run_id)
+            approved += 1
+        except Exception:
+            failed += 1
+    return approved, failed

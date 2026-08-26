@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     rhp_schema_version: str = "rhp-v1.1"
     rhp_extraction_batch_size: int = 5
     rhp_extraction_max_attempts: int = 3
+    rhp_auto_approve: bool = True
     gemini_file_timeout_seconds: int = 300
     gemini_file_poll_seconds: float = 2
     gemini_request_timeout_seconds: int = 180

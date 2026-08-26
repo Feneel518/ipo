@@ -145,16 +145,16 @@ export default async function IpoPage({ params }: { params: Params }) {
           {ipo.documents.length > 0 && <div className="record-section">
             <div className="column-heading"><span>Filed documents</span></div>
             {ipo.documents.map((document) => <a className="doc-row" href={document.url} target="_blank" rel="noreferrer" key={`${document.document_type}-${document.url}`}>
-              <span className="doc-kind">{humanizeLabel(document.document_type)}</span>
-              {document.title} <b aria-hidden="true">↗</b>
+              <span><span className="doc-kind">{humanizeLabel(document.document_type)}</span>{document.title}</span>
+              <span className="doc-action">Open <b aria-hidden="true">→</b></span>
             </a>)}
           </div>}
 
           <div className="record-section">
             <div className="column-heading"><span>Source trail</span></div>
             {ipo.listings.map((listing) => <a className="doc-row" href={listing.source_url} target="_blank" rel="noreferrer" key={`${listing.exchange}-${listing.symbol}`}>
-              <span className="doc-kind">{listing.exchange} {listing.segment} · {listing.is_stale ? "Stale" : "Verified"}</span>
-              {listing.symbol ?? listing.scrip_code ?? "Official record"} <b aria-hidden="true">↗</b>
+              <span><span className="doc-kind">{listing.exchange} {listing.segment} · {listing.is_stale ? "Stale" : "Verified"}</span>{listing.symbol ?? listing.scrip_code ?? "Official record"}</span>
+              <span className="doc-action">Open <b aria-hidden="true">→</b></span>
             </a>)}
           </div>
 

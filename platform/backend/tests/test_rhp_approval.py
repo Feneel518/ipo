@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.rhp.approval import validate_review_resolutions
+from app.services.rhp.approval import automatic_review_resolutions, validate_review_resolutions
 
 
 def test_review_requires_one_resolution_for_every_warning():
@@ -62,3 +62,19 @@ def test_review_requires_a_nonempty_note():
                 }
             ],
         )
+
+
+def test_automatic_review_accepts_every_issue_with_an_audit_note():
+    issues = [{"code": "VALUE_NOT_IN_EVIDENCE"}, {"code": "MODEL_WARNING"}]
+    assert automatic_review_resolutions(issues) == [
+        {
+            "issue_code": "VALUE_NOT_IN_EVIDENCE",
+            "disposition": "ACCEPTED",
+            "note": "Automatically accepted by the configured RHP publication policy.",
+        },
+        {
+            "issue_code": "MODEL_WARNING",
+            "disposition": "ACCEPTED",
+            "note": "Automatically accepted by the configured RHP publication policy.",
+        },
+    ]
